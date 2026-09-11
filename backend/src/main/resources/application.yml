@@ -26,7 +26,7 @@ server:
   port: 8080
 
 jwt:
-  secret: devpulse-local-secret-change-me
+  secret: ${JWT_SECRET:devpulse-local-secret-change-me}
   expiration: 3600000
   refresh-expiration: 604800000
 
