@@ -1,51 +1,87 @@
-name: DevPulse CI
+name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ main, develop ]
   pull_request:
-    branches: [main, develop]
+    branches: [ main, develop ]
 
 jobs:
-  lint-and-test:
+  build-backend:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '21'
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Cache Maven packages
+        uses: actions/cache@v4
         with:
-          python-version: '3.12'
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2-
 
-      - name: Set up Node
+      - name: Build and run tests (backend)
+        working-directory: backend
+        run: mvn -B -V -T 1C clean test
+
+      - name: Package backend
+        working-directory: backend
+        run: mvn -B -V -T 1C -DskipTests package
+
+      - name: Build backend Docker image (local tag)
+        working-directory: backend
+        run: |
+          if [ -f Dockerfile ]; then 
+            docker build -t devpulse/backend:${{ github.sha }} . ;
+          else 
+            echo "No Dockerfile in backend/ — skipping docker build"; 
+          fi
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: build-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Validate repository structure
+      - name: Install and build frontend
+        working-directory: frontend
         run: |
-          ls -R
+          if [ -f package.json ]; then
+            npm ci
+            npm run build --if-present
+          else
+            echo "No frontend found — skipping"
+          fi
 
-      - name: Placeholder backend validation
-        run: |
-          echo "Backend lint and unit tests will be run here in later milestones."
+  publish-artifacts:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Placeholder frontend validation
+      - name: Archive backend artifact
+        if: always()
         run: |
-          echo "Frontend lint and tests will be run here in later milestones."
+          mkdir -p build_artifacts
+          cp backend/target/*.jar build_artifacts/ 2>/dev/null || true
+          ls -la build_artifacts || true
 
-      - name: Placeholder AI validation
-        run: |
-          echo "AI service tests will be run here in later milestones."
-
-      - name: Placeholder security scan
-        run: |
-          echo "Security scan stage will be enabled in the production pipeline."
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: devpulse-artifacts
+          path: build_artifacts
