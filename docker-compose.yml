@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: devpulse
+      POSTGRES_USER: devpulse
+      POSTGRES_PASSWORD: devpulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/devpulse
+      SPRING_DATASOURCE_USERNAME: devpulse
+      SPRING_DATASOURCE_PASSWORD: devpulse
+      SPRING_FLYWAY_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata:
