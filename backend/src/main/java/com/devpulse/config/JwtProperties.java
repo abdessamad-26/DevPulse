@@ -22,4 +22,16 @@ public class JwtProperties {
     public long getRefreshExpiration() {
         return refreshExpiration;
     }
+    
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
+
+    public void setExpiration(long expiration) {
+        this.expiration = expiration;
+    }
+
+    public void setRefreshExpiration(long refreshExpiration) {
+        this.refreshExpiration = refreshExpiration;
+    }
 }
