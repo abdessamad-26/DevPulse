@@ -4,6 +4,8 @@ import com.devpulse.dto.ServiceRequest;
 import com.devpulse.entity.Project;
 import com.devpulse.entity.ServiceEntity;
 import com.devpulse.repository.ServiceRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -33,8 +35,9 @@ public class ServiceManagementService {
         return serviceRepository.save(service);
     }
 
-    public List<ServiceEntity> listServices(Long projectId, Authentication authentication) {
+    public Page<ServiceEntity> listServices(Long projectId, Authentication authentication, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
-        return serviceRepository.findByProject_Id(projectId);
+        return serviceRepository.findByProject_IdOrderByCreatedAtDescIdDesc(
+                projectId, PageRequestSupport.of(page, size));
     }
 }

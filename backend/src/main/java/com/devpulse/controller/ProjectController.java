@@ -1,6 +1,8 @@
 package com.devpulse.controller;
 
 import com.devpulse.dto.ProjectRequest;
+import com.devpulse.dto.ProjectResponse;
+import com.devpulse.dto.PageResponse;
 import com.devpulse.entity.Project;
 import com.devpulse.service.ProjectAccessService;
 import com.devpulse.service.ProjectService;
@@ -14,9 +16,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * Project management endpoints, scoped to the authenticated user.
@@ -36,20 +37,25 @@ public class ProjectController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','DEVELOPER')")
-    public ResponseEntity<Project> create(@Valid @RequestBody ProjectRequest request, Authentication authentication) {
+    public ResponseEntity<ProjectResponse> create(@Valid @RequestBody ProjectRequest request, Authentication authentication) {
         Long userId = projectAccessService.resolveCurrentUser(authentication).getId();
         Project project = projectService.createProject(userId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(project);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ProjectResponse.from(project));
     }
 
     @GetMapping
-    public ResponseEntity<List<Project>> listMine(Authentication authentication) {
+    public ResponseEntity<PageResponse<ProjectResponse>> listMine(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
         Long userId = projectAccessService.resolveCurrentUser(authentication).getId();
-        return ResponseEntity.ok(projectService.listProjectsAccessibleToUser(userId));
+        return ResponseEntity.ok(PageResponse.from(
+                projectService.listProjectsAccessibleToUser(userId, page, size).map(ProjectResponse::from)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Project> get(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(projectAccessService.requireAccessibleProject(id, authentication));
+    public ResponseEntity<ProjectResponse> get(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(ProjectResponse.from(
+                projectAccessService.requireAccessibleProject(id, authentication)));
     }
 }

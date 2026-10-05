@@ -4,6 +4,9 @@ import com.devpulse.dto.MetricIngestRequest;
 import com.devpulse.entity.Metric;
 import com.devpulse.entity.Project;
 import com.devpulse.repository.MetricRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -48,17 +51,18 @@ public class MetricService {
         }).toList();
     }
 
-    public List<Metric> query(Long projectId, Authentication authentication, String metricName,
-                               LocalDateTime from, LocalDateTime to) {
+    public Page<Metric> query(Long projectId, Authentication authentication, String metricName,
+                               LocalDateTime from, LocalDateTime to, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
+        Pageable pageable = PageRequestSupport.of(page, size);
 
         if (metricName == null) {
-            return metricRepository.findByProject_IdOrderByCapturedAtDesc(projectId);
+            return metricRepository.findByProject_IdOrderByCapturedAtDescIdDesc(projectId, pageable);
         }
 
         LocalDateTime rangeFrom = from != null ? from : LocalDateTime.now().minusDays(1);
         LocalDateTime rangeTo = to != null ? to : LocalDateTime.now();
-        return metricRepository.findByProject_IdAndMetricNameAndCapturedAtBetweenOrderByCapturedAtAsc(
-                projectId, metricName, rangeFrom, rangeTo);
+        return metricRepository.findByProject_IdAndMetricNameAndCapturedAtBetweenOrderByCapturedAtAscIdAsc(
+                projectId, metricName, rangeFrom, rangeTo, pageable);
     }
 }

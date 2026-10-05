@@ -5,6 +5,8 @@ import com.devpulse.entity.Project;
 import com.devpulse.entity.User;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.ProjectRepository;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import com.devpulse.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,11 +74,12 @@ class ProjectServiceTest {
         Project project = new Project();
         project.setName("billing-service");
 
-        when(projectRepository.findAccessibleByUserId(10L)).thenReturn(List.of(project));
+        when(projectRepository.findAccessibleByUserId(eq(10L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(project)));
 
-        List<Project> projects = projectService.listProjectsAccessibleToUser(10L);
+        var projects = projectService.listProjectsAccessibleToUser(10L, 0, 20);
 
-        assertThat(projects).hasSize(1);
-        assertThat(projects.get(0).getName()).isEqualTo("billing-service");
+        assertThat(projects.getContent()).hasSize(1);
+        assertThat(projects.getContent().get(0).getName()).isEqualTo("billing-service");
     }
 }

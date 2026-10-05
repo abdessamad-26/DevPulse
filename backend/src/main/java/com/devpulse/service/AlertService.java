@@ -3,6 +3,8 @@ package com.devpulse.service;
 import com.devpulse.entity.Alert;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.AlertRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -19,9 +21,10 @@ public class AlertService {
         this.projectAccessService = projectAccessService;
     }
 
-    public List<Alert> listAlerts(Long projectId, Authentication authentication) {
+    public Page<Alert> listAlerts(Long projectId, Authentication authentication, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
-        return alertRepository.findByAlertRule_Project_IdOrderByCreatedAtDesc(projectId);
+        return alertRepository.findByAlertRule_Project_IdOrderByCreatedAtDescIdDesc(
+                projectId, PageRequestSupport.of(page, size));
     }
 
     public Alert acknowledge(Long alertId, Authentication authentication) {

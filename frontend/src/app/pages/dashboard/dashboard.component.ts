@@ -112,15 +112,15 @@ export class DashboardComponent {
         return;
       }
       forkJoin({
-        services: this.api.services(projectId).pipe(catchError(() => of([]))),
-        incidents: this.api.incidents(projectId).pipe(catchError(() => of([]))),
-        alerts: this.api.alerts(projectId).pipe(catchError(() => of([]))),
-        deployments: this.api.deployments(projectId).pipe(catchError(() => of([]))),
+        services: this.api.services(projectId).pipe(catchError(() => of({ content: [] as ServiceItem[] }))),
+        incidents: this.api.incidents(projectId).pipe(catchError(() => of({ content: [] as Incident[] }))),
+        alerts: this.api.alerts(projectId).pipe(catchError(() => of({ content: [] as Alert[] }))),
+        deployments: this.api.deployments(projectId).pipe(catchError(() => of({ content: [] as Deployment[] }))),
       }).subscribe(({ services, incidents, alerts, deployments }) => {
-        this.services.set(services);
-        this.incidents.set(incidents);
-        this.alerts.set(alerts);
-        this.deployments.set(deployments);
+        this.services.set(services.content);
+        this.incidents.set(incidents.content);
+        this.alerts.set(alerts.content);
+        this.deployments.set(deployments.content);
       });
     });
   }

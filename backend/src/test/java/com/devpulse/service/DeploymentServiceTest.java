@@ -5,6 +5,8 @@ import com.devpulse.entity.Deployment;
 import com.devpulse.entity.Project;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.DeploymentRepository;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,6 +20,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -93,11 +96,12 @@ class DeploymentServiceTest {
         Deployment deployment = new Deployment();
         deployment.setVersion("v1.4.2");
 
-        when(deploymentRepository.findByProject_IdOrderByCreatedAtDesc(1L)).thenReturn(List.of(deployment));
+        when(deploymentRepository.findByProject_IdOrderByCreatedAtDescIdDesc(eq(1L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(deployment)));
 
-        List<Deployment> deployments = deploymentService.listDeployments(1L, authentication);
+        var deployments = deploymentService.listDeployments(1L, authentication, 0, 20);
 
-        assertThat(deployments).hasSize(1);
-        assertThat(deployments.get(0).getVersion()).isEqualTo("v1.4.2");
+        assertThat(deployments.getContent()).hasSize(1);
+        assertThat(deployments.getContent().get(0).getVersion()).isEqualTo("v1.4.2");
     }
 }

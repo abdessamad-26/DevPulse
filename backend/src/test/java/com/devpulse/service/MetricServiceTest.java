@@ -4,6 +4,8 @@ import com.devpulse.dto.MetricIngestRequest;
 import com.devpulse.entity.Metric;
 import com.devpulse.entity.Project;
 import com.devpulse.repository.MetricRepository;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -59,20 +61,22 @@ class MetricServiceTest {
 
     @Test
     void shouldQueryByMetricNameAndDefaultTimeRangeWhenNotProvided() {
-        when(metricRepository.findByProject_IdAndMetricNameAndCapturedAtBetweenOrderByCapturedAtAsc(
-                eq(1L), eq("cpu_usage_percent"), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of(new Metric()));
+        when(metricRepository.findByProject_IdAndMetricNameAndCapturedAtBetweenOrderByCapturedAtAscIdAsc(
+                eq(1L), eq("cpu_usage_percent"), any(LocalDateTime.class), any(LocalDateTime.class),
+                any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(new Metric())));
 
-        List<Metric> results = metricService.query(1L, authentication, "cpu_usage_percent", null, null);
+        var results = metricService.query(1L, authentication, "cpu_usage_percent", null, null, 0, 20);
 
         assertThat(results).hasSize(1);
     }
 
     @Test
     void shouldListAllMetricsForProjectWhenNoMetricNameGiven() {
-        when(metricRepository.findByProject_IdOrderByCapturedAtDesc(1L)).thenReturn(List.of(new Metric(), new Metric()));
+        when(metricRepository.findByProject_IdOrderByCapturedAtDescIdDesc(eq(1L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(new Metric(), new Metric())));
 
-        List<Metric> results = metricService.query(1L, authentication, null, null, null);
+        var results = metricService.query(1L, authentication, null, null, null, 0, 20);
 
         assertThat(results).hasSize(2);
     }

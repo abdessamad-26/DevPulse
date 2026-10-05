@@ -6,6 +6,8 @@ import com.devpulse.entity.User;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.ProjectRepository;
 import com.devpulse.repository.UserRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,7 +36,7 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
-    public List<Project> listProjectsAccessibleToUser(Long userId) {
-        return projectRepository.findAccessibleByUserId(userId);
+    public Page<Project> listProjectsAccessibleToUser(Long userId, int page, int size) {
+        return projectRepository.findAccessibleByUserId(userId, PageRequestSupport.of(page, size));
     }
 }

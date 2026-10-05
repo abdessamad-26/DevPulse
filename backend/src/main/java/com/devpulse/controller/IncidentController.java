@@ -2,6 +2,8 @@ package com.devpulse.controller;
 
 import com.devpulse.dto.IncidentCreateRequest;
 import com.devpulse.dto.IncidentUpdateRequest;
+import com.devpulse.dto.IncidentResponse;
+import com.devpulse.dto.PageResponse;
 import com.devpulse.entity.Incident;
 import com.devpulse.service.IncidentService;
 import jakarta.validation.Valid;
@@ -9,8 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * Manual/administrative incident endpoints. Automated incident creation
@@ -28,30 +28,35 @@ public class IncidentController {
     }
 
     @PostMapping
-    public ResponseEntity<Incident> create(@Valid @RequestBody IncidentCreateRequest request, Authentication authentication) {
+    public ResponseEntity<IncidentResponse> create(@Valid @RequestBody IncidentCreateRequest request, Authentication authentication) {
         Incident incident = incidentService.createIncident(authentication, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(incident);
+        return ResponseEntity.status(HttpStatus.CREATED).body(IncidentResponse.from(incident));
     }
 
     @GetMapping
-    public ResponseEntity<List<Incident>> listForProject(@RequestParam Long projectId, Authentication authentication) {
-        return ResponseEntity.ok(incidentService.listIncidentsForProject(projectId, authentication));
+    public ResponseEntity<PageResponse<IncidentResponse>> listForProject(
+            @RequestParam Long projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        return ResponseEntity.ok(PageResponse.from(
+                incidentService.listIncidentsForProject(projectId, authentication, page, size).map(IncidentResponse::from)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Incident> get(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(incidentService.getIncident(id, authentication));
+    public ResponseEntity<IncidentResponse> get(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(IncidentResponse.from(incidentService.getIncident(id, authentication)));
     }
 
     @PostMapping("/{id}/analyze")
-    public ResponseEntity<Incident> analyze(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(incidentService.analyzeIncident(id, authentication));
+    public ResponseEntity<IncidentResponse> analyze(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(IncidentResponse.from(incidentService.analyzeIncident(id, authentication)));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Incident> update(@PathVariable Long id,
+    public ResponseEntity<IncidentResponse> update(@PathVariable Long id,
                                             @Valid @RequestBody IncidentUpdateRequest request,
                                             Authentication authentication) {
-        return ResponseEntity.ok(incidentService.updateIncident(id, authentication, request));
+        return ResponseEntity.ok(IncidentResponse.from(incidentService.updateIncident(id, authentication, request)));
     }
 }

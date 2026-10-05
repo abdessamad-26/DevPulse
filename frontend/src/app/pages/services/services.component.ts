@@ -105,8 +105,8 @@ export class ServicesComponent {
 
   private reload(projectId: number): void {
     this.api.services(projectId).subscribe({
-      next: (list) => {
-        this.services.set(list);
+      next: (page) => {
+        this.services.set(page.content);
         this.loaded.set(true);
       },
       error: () => this.loaded.set(true),

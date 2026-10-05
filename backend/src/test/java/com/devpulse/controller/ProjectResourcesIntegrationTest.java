@@ -212,9 +212,11 @@ class ProjectResourcesIntegrationTest {
                         .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isOk())
                 .andReturn();
-        List<Map<String, Object>> projects = objectMapper.readValue(
-                projectsResult.getResponse().getContentAsString(), new TypeReference<>() {});
-        assertThat(projects).extracting(project -> project.get("id").toString())
+        Map<?, ?> projectsPage = objectMapper.readValue(
+                projectsResult.getResponse().getContentAsString(), Map.class);
+        List<?> projects = (List<?>) projectsPage.get("content");
+        assertThat(projectsPage.get("totalElements").toString()).isEqualTo("2");
+        assertThat(projects).extracting(project -> ((Map<?, ?>) project).get("id").toString())
                 .containsExactlyInAnyOrder(viewerProjectId.toString(), developerProjectId.toString());
 
         MvcResult membersResult = mockMvc.perform(get("/api/projects/" + viewerProjectId + "/members")

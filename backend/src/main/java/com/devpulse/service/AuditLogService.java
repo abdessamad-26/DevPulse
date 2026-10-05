@@ -4,11 +4,10 @@ import com.devpulse.dto.AuditLogResponse;
 import com.devpulse.entity.AuditLog;
 import com.devpulse.entity.Project;
 import com.devpulse.entity.User;
-import com.devpulse.exception.ApiException;
 import com.devpulse.repository.AuditLogRepository;
 import com.devpulse.repository.ProjectRepository;
+import com.devpulse.util.PageRequestSupport;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -16,8 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuditLogService {
-
-    private static final int MAX_PAGE_SIZE = 100;
 
     private final AuditLogRepository auditLogRepository;
     private final ProjectRepository projectRepository;
@@ -47,7 +44,7 @@ public class AuditLogService {
     public Page<AuditLogResponse> listProject(Long projectId, Authentication authentication,
                                                int page, int size) {
         projectAccessService.requireProjectManager(projectId, authentication);
-        Pageable pageable = validatedPage(page, size);
+        Pageable pageable = PageRequestSupport.of(page, size);
         return auditLogRepository.findByProject_IdOrderByCreatedAtDescIdDesc(projectId, pageable)
                 .map(this::toResponse);
     }
@@ -55,16 +52,9 @@ public class AuditLogService {
     @Transactional(readOnly = true)
     public Page<AuditLogResponse> listAll(Authentication authentication, int page, int size) {
         projectAccessService.requireGlobalAdmin(authentication);
-        Pageable pageable = validatedPage(page, size);
+        Pageable pageable = PageRequestSupport.of(page, size);
         return auditLogRepository.findAllByOrderByCreatedAtDescIdDesc(pageable)
                 .map(this::toResponse);
-    }
-
-    private Pageable validatedPage(int page, int size) {
-        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
-            throw new ApiException("Page must be non-negative and size must be between 1 and 100");
-        }
-        return PageRequest.of(page, size);
     }
 
     private void record(Project project, User actor, String action, String entityType,

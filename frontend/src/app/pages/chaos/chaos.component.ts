@@ -102,8 +102,8 @@ export class ChaosComponent {
 
   private reload(projectId: number): void {
     this.api.chaosHistory(projectId).subscribe({
-      next: (list) => {
-        this.history.set(list);
+      next: (page) => {
+        this.history.set(page.content);
         this.loaded.set(true);
       },
       error: () => this.loaded.set(true),

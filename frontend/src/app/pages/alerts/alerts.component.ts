@@ -147,8 +147,8 @@ export class AlertsComponent {
   }
 
   private reload(projectId: number): void {
-    this.api.alertRules(projectId).subscribe({ next: (list) => this.rules.set(list) });
-    this.api.alerts(projectId).subscribe({ next: (list) => this.alerts.set(list) });
+    this.api.alertRules(projectId).subscribe({ next: (page) => this.rules.set(page.content) });
+    this.api.alerts(projectId).subscribe({ next: (page) => this.alerts.set(page.content) });
   }
 
   submitRule(): void {

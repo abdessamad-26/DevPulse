@@ -7,6 +7,8 @@ import com.devpulse.entity.Project;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.ChaosSimulationRepository;
 import com.devpulse.repository.IncidentRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -95,8 +97,9 @@ public class ChaosService {
         return chaosSimulationRepository.save(simulation);
     }
 
-    public List<ChaosSimulation> history(Long projectId, Authentication authentication) {
+    public Page<ChaosSimulation> history(Long projectId, Authentication authentication, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
-        return chaosSimulationRepository.findByProject_IdOrderByCreatedAtDesc(projectId);
+        return chaosSimulationRepository.findByProject_IdOrderByCreatedAtDescIdDesc(
+                projectId, PageRequestSupport.of(page, size));
     }
 }

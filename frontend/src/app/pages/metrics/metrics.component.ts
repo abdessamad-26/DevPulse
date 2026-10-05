@@ -107,8 +107,8 @@ export class MetricsComponent {
 
   private reload(projectId: number): void {
     this.api.metrics(projectId).subscribe({
-      next: (list) => {
-        this.metrics.set(list);
+      next: (page) => {
+        this.metrics.set(page.content);
         this.loaded.set(true);
       },
       error: () => this.loaded.set(true),

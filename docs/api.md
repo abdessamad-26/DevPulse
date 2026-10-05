@@ -2,6 +2,15 @@
 
 This document describes the endpoints currently implemented in the repository. The backend API runs at `http://localhost:8080`; the AI service also exposes its own endpoints on port `8000`. Request validation errors use the backend's structured error response.
 
+## Pagination and response models
+
+Collection endpoints for projects, services, metrics, logs, incidents, alert
+rules, alerts, deployments, and chaos history return a Spring `Page` envelope.
+Use `page` (zero-based, default `0`) and `size` (default `20`, maximum `100`).
+The response contains `content`, `totalElements`, `totalPages`, `number`, and
+`size`. Responses use explicit API DTOs rather than serializing persistence
+entities.
+
 ## Authentication
 
 The backend issues JWT access and refresh tokens. Except for registration, login, refresh, logout, and the health endpoints, backend routes require an access token:
@@ -196,7 +205,9 @@ the `X-API-Key` header.
 
 ### `GET /api/projects/{projectId}/metrics`
 
-Query metrics the caller can access. Optional query parameters: `metric`, `from`, and `to` (ISO date-time). Results are returned as a list; the endpoint does not currently paginate.
+Query metrics the caller can access. Optional query parameters: `metric`,
+`from`, `to` (ISO date-time), `page`, and `size`. Results are returned as a
+paginated response.
 
 ### `POST /api/projects/{projectId}/logs`
 
@@ -222,7 +233,9 @@ Each entry requires `message`.
 
 ### `GET /api/projects/{projectId}/logs`
 
-Search logs. Optional query parameters: `service`, `environment`, `level`, `q`, `from`, `to`, `page` (default `0`), and `size` (default `20`). Returns a Spring `Page` response.
+Search logs. Optional query parameters: `service`, `environment`, `level`, `q`,
+`from`, `to`, `page`, and `size`. Results are ordered newest first and returned
+as a paginated response.
 
 ## Incidents
 
@@ -245,7 +258,7 @@ Create an incident as the project owner, global `ADMIN`, or a project member wit
 
 ### `GET /api/incidents?projectId={projectId}`
 
-List incidents for a project the caller can access.
+List incidents for a project the caller can access. Accepts `page` and `size`.
 
 ### `GET /api/incidents/{id}`
 
@@ -290,11 +303,11 @@ Create an alert rule as the project owner, global `ADMIN`, or a project member w
 
 ### `GET /api/projects/{projectId}/alert-rules`
 
-List alert rules for an accessible project.
+List alert rules for an accessible project. Accepts `page` and `size`.
 
 ### `GET /api/alerts?projectId={projectId}`
 
-List alerts for an accessible project.
+List alerts for an accessible project. Accepts `page` and `size`.
 
 ### `POST /api/alerts/{id}/ack`
 
@@ -325,7 +338,7 @@ Record a deployment as the project owner, global `ADMIN`, or a project member wi
 
 ### `GET /api/deployments?projectId={projectId}`
 
-List deployments for an accessible project.
+List deployments for an accessible project. Accepts `page` and `size`.
 
 ## Chaos simulations
 
@@ -339,7 +352,7 @@ Create a simulated chaos event as the project owner, global `ADMIN`, or a projec
 
 ### `GET /api/projects/{projectId}/chaos`
 
-List simulations for an accessible project.
+List simulations for an accessible project. Accepts `page` and `size`.
 
 These endpoints do **not** affect real infrastructure; they create records and related incidents. Simulations are blocked for projects marked `production` unless `CHAOS_ALLOW_PRODUCTION=true`.
 
@@ -374,4 +387,6 @@ Backend errors use this envelope:
 }
 ```
 
-There is no user-administration API or membership/invitation API yet. DTO coverage is incomplete, and only log search is paginated. Some response endpoints currently serialize persistence entities directly.
+There is no user-administration API or invitation API yet. Collection endpoints
+use bounded page requests and explicit response DTOs; ingestion-key and member
+collections remain intentionally small project-scoped lists.

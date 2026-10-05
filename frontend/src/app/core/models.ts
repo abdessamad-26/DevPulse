@@ -54,6 +54,7 @@ export interface ServiceItem {
 export interface Incident {
   id: number;
   projectId: number | null;
+  serviceId: number | null;
   title: string;
   description: string | null;
   severity: string;

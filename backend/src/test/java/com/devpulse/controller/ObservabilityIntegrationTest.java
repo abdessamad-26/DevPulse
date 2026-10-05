@@ -95,11 +95,29 @@ class ObservabilityIntegrationTest {
                         .content(objectMapper.writeValueAsString(ingestBody)))
                 .andExpect(status().isCreated());
 
+        MvcResult metricsResult = mockMvc.perform(get("/api/projects/" + projectId + "/metrics")
+                        .param("page", "0")
+                        .param("size", "1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        Map<?, ?> metricPage = objectMapper.readValue(metricsResult.getResponse().getContentAsString(), Map.class);
+        assertThat(metricPage.get("totalElements")).isEqualTo(1);
+        List<?> metricContent = (List<?>) metricPage.get("content");
+        assertThat(metricContent).hasSize(1);
+        assertThat(((Map<?, ?>) metricContent.get(0)).get("metricName")).isEqualTo("cpu_usage_percent");
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/metrics")
+                        .param("size", "101")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+
         MvcResult alertsResult = mockMvc.perform(get("/api/alerts").param("projectId", projectId.toString())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andReturn();
-        List<?> alerts = objectMapper.readValue(alertsResult.getResponse().getContentAsString(), List.class);
+        Map<?, ?> alertPage = objectMapper.readValue(alertsResult.getResponse().getContentAsString(), Map.class);
+        List<?> alerts = (List<?>) alertPage.get("content");
         assertThat(alerts).hasSize(1);
         Map<?, ?> alert = (Map<?, ?>) alerts.get(0);
         assertThat(alert.get("status")).isEqualTo("OPEN");

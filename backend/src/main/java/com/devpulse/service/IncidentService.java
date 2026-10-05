@@ -10,6 +10,8 @@ import com.devpulse.entity.ServiceEntity;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.IncidentRepository;
 import com.devpulse.repository.ServiceRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -67,9 +69,10 @@ public class IncidentService {
         return incidentRepository.save(incident);
     }
 
-    public List<Incident> listIncidentsForProject(Long projectId, Authentication authentication) {
+    public Page<Incident> listIncidentsForProject(Long projectId, Authentication authentication, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
-        return incidentRepository.findByProject_Id(projectId);
+        return incidentRepository.findByProject_IdOrderByCreatedAtDescIdDesc(
+                projectId, PageRequestSupport.of(page, size));
     }
 
     public Incident updateIncident(Long incidentId, Authentication authentication, IncidentUpdateRequest request) {

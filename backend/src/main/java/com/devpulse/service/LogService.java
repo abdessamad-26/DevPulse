@@ -4,9 +4,10 @@ import com.devpulse.dto.LogIngestRequest;
 import com.devpulse.entity.LogEntry;
 import com.devpulse.entity.Project;
 import com.devpulse.repository.LogRepository;
+import com.devpulse.util.PageRequestSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -44,8 +45,10 @@ public class LogService {
     }
 
     public Page<LogEntry> search(Long projectId, Authentication authentication, String service, String environment,
-                                  String level, String keyword, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+                                  String level, String keyword, LocalDateTime from, LocalDateTime to, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
+        var pageable = PageRequestSupport.of(page, size,
+                Sort.by(Sort.Direction.DESC, "timestamp").and(Sort.by(Sort.Direction.DESC, "id")));
 
         Specification<LogEntry> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();

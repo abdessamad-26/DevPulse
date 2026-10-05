@@ -115,8 +115,8 @@ export class DeploymentsComponent {
 
   private reload(projectId: number): void {
     this.api.deployments(projectId).subscribe({
-      next: (list) => {
-        this.deployments.set(list);
+      next: (page) => {
+        this.deployments.set(page.content);
         this.loaded.set(true);
       },
       error: () => this.loaded.set(true),

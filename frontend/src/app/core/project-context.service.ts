@@ -34,7 +34,8 @@ export class ProjectContext {
 
   load(): void {
     this.api.projects().subscribe({
-      next: (list) => {
+      next: (result) => {
+        const list = result.content;
         this.projects.set(list);
         this.loaded.set(true);
         this.error.set(null);

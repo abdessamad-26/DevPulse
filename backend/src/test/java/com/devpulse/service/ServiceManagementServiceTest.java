@@ -4,6 +4,8 @@ import com.devpulse.dto.ServiceRequest;
 import com.devpulse.entity.Project;
 import com.devpulse.entity.ServiceEntity;
 import com.devpulse.repository.ServiceRepository;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,6 +19,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -70,11 +73,12 @@ class ServiceManagementServiceTest {
         ServiceEntity service = new ServiceEntity();
         service.setName("billing-api");
 
-        when(serviceRepository.findByProject_Id(1L)).thenReturn(List.of(service));
+        when(serviceRepository.findByProject_IdOrderByCreatedAtDescIdDesc(eq(1L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(service)));
 
-        List<ServiceEntity> services = serviceManagementService.listServices(1L, authentication);
+        var services = serviceManagementService.listServices(1L, authentication, 0, 20);
 
-        assertThat(services).hasSize(1);
-        assertThat(services.get(0).getName()).isEqualTo("billing-api");
+        assertThat(services.getContent()).hasSize(1);
+        assertThat(services.getContent().get(0).getName()).isEqualTo("billing-api");
     }
 }

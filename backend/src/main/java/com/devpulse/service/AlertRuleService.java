@@ -5,6 +5,8 @@ import com.devpulse.entity.AlertRule;
 import com.devpulse.entity.Project;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.AlertRuleRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -49,8 +51,9 @@ public class AlertRuleService {
         return alertRuleRepository.save(rule);
     }
 
-    public List<AlertRule> listRules(Long projectId, Authentication authentication) {
+    public Page<AlertRule> listRules(Long projectId, Authentication authentication, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
-        return alertRuleRepository.findByProject_Id(projectId);
+        return alertRuleRepository.findByProject_IdOrderByCreatedAtDescIdDesc(
+                projectId, PageRequestSupport.of(page, size));
     }
 }

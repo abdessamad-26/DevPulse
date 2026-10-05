@@ -125,8 +125,8 @@ export class IncidentsComponent {
 
   private reload(projectId: number): void {
     this.api.incidents(projectId).subscribe({
-      next: (list) => {
-        this.incidents.set(list);
+      next: (page) => {
+        this.incidents.set(page.content);
         this.loaded.set(true);
       },
       error: () => this.loaded.set(true),

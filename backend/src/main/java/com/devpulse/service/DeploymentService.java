@@ -5,6 +5,8 @@ import com.devpulse.entity.Deployment;
 import com.devpulse.entity.Project;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.DeploymentRepository;
+import com.devpulse.util.PageRequestSupport;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -46,8 +48,9 @@ public class DeploymentService {
         return deploymentRepository.save(deployment);
     }
 
-    public List<Deployment> listDeployments(Long projectId, Authentication authentication) {
+    public Page<Deployment> listDeployments(Long projectId, Authentication authentication, int page, int size) {
         projectAccessService.requireAccessibleProject(projectId, authentication);
-        return deploymentRepository.findByProject_IdOrderByCreatedAtDesc(projectId);
+        return deploymentRepository.findByProject_IdOrderByCreatedAtDescIdDesc(
+                projectId, PageRequestSupport.of(page, size));
     }
 }
