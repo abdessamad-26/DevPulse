@@ -129,12 +129,58 @@ class ObservabilityIntegrationTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
-        // A second breaching point should NOT duplicate the alert.
+        // A second breach must not duplicate an acknowledged alert.
         mockMvc.perform(post("/api/projects/" + projectId + "/metrics")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(ingestBody)))
                 .andExpect(status().isCreated());
+
+        MvcResult activeAlertsResult = mockMvc.perform(get("/api/alerts").param("projectId", projectId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<?> activeAlerts = (List<?>) objectMapper.readValue(
+                activeAlertsResult.getResponse().getContentAsString(), Map.class).get("content");
+        assertThat(activeAlerts).hasSize(1);
+        assertThat(((Map<?, ?>) activeAlerts.get(0)).get("status")).isEqualTo("ACKNOWLEDGED");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/metrics")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "points", List.of(Map.of("metricName", "cpu_usage_percent", "value", 45.0))))))
+                .andExpect(status().isCreated());
+
+        MvcResult resolvedAlertsResult = mockMvc.perform(get("/api/alerts").param("projectId", projectId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<?> resolvedAlerts = (List<?>) objectMapper.readValue(
+                resolvedAlertsResult.getResponse().getContentAsString(), Map.class).get("content");
+        assertThat(resolvedAlerts).hasSize(1);
+        Long resolvedAlertId = Long.valueOf(((Map<?, ?>) resolvedAlerts.get(0)).get("id").toString());
+        assertThat(((Map<?, ?>) resolvedAlerts.get(0)).get("status")).isEqualTo("RESOLVED");
+        mockMvc.perform(post("/api/alerts/" + resolvedAlertId + "/ack")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/metrics")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ingestBody)))
+                .andExpect(status().isCreated());
+        MvcResult reopenedAlertsResult = mockMvc.perform(get("/api/alerts").param("projectId", projectId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<?> reopenedAlerts = (List<?>) objectMapper.readValue(
+                reopenedAlertsResult.getResponse().getContentAsString(), Map.class).get("content");
+        assertThat(reopenedAlerts).hasSize(2);
+        assertThat(reopenedAlerts).anySatisfy(value ->
+                assertThat(((Map<?, ?>) value).get("status")).isEqualTo("RESOLVED"));
+        assertThat(reopenedAlerts).anySatisfy(value ->
+                assertThat(((Map<?, ?>) value).get("status")).isEqualTo("OPEN"));
     }
 
     @Test

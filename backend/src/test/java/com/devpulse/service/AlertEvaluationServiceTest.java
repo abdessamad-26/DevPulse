@@ -35,6 +35,9 @@ class AlertEvaluationServiceTest {
     @Mock
     private MetricRepository metricRepository;
 
+    @Mock
+    private AlertNotificationService alertNotificationService;
+
     @InjectMocks
     private AlertEvaluationService alertEvaluationService;
 
@@ -65,7 +68,9 @@ class AlertEvaluationServiceTest {
         AlertRule rule = rule(">", 80.0);
         when(alertRuleRepository.findByProject_IdAndMetricAndEnabledTrue(1L, "cpu_usage_percent"))
                 .thenReturn(List.of(rule));
-        when(alertRepository.findFirstByAlertRuleIdAndStatus(42L, "OPEN")).thenReturn(Optional.empty());
+        when(alertRepository.findByAlertRuleIdAndStatusIn(42L, List.of("OPEN", "ACKNOWLEDGED")))
+                .thenReturn(List.of());
+        when(alertRepository.save(any(Alert.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         alertEvaluationService.evaluate(metricAbove(92.0));
 
@@ -74,6 +79,7 @@ class AlertEvaluationServiceTest {
         assertThat(captor.getValue().getSeverity()).isEqualTo("HIGH");
         assertThat(captor.getValue().getStatus()).isEqualTo("OPEN");
         assertThat(captor.getValue().getMessage()).contains("92.0");
+        verify(alertNotificationService).notifyOpened(eq(captor.getValue()), eq(92.0), any(LocalDateTime.class));
     }
 
     @Test
@@ -92,8 +98,8 @@ class AlertEvaluationServiceTest {
         AlertRule rule = rule(">", 80.0);
         when(alertRuleRepository.findByProject_IdAndMetricAndEnabledTrue(1L, "cpu_usage_percent"))
                 .thenReturn(List.of(rule));
-        when(alertRepository.findFirstByAlertRuleIdAndStatus(42L, "OPEN"))
-                .thenReturn(Optional.of(new Alert()));
+        when(alertRepository.findByAlertRuleIdAndStatusIn(42L, List.of("OPEN", "ACKNOWLEDGED")))
+                .thenReturn(List.of(new Alert()));
 
         alertEvaluationService.evaluate(metricAbove(95.0));
 
@@ -105,7 +111,8 @@ class AlertEvaluationServiceTest {
         AlertRule rule = rule("<", 10.0);
         when(alertRuleRepository.findByProject_IdAndMetricAndEnabledTrue(1L, "cpu_usage_percent"))
                 .thenReturn(List.of(rule));
-        when(alertRepository.findFirstByAlertRuleIdAndStatus(42L, "OPEN")).thenReturn(Optional.empty());
+        when(alertRepository.findByAlertRuleIdAndStatusIn(42L, List.of("OPEN", "ACKNOWLEDGED")))
+                .thenReturn(List.of());
 
         alertEvaluationService.evaluate(metricAbove(5.0));
 
@@ -148,11 +155,46 @@ class AlertEvaluationServiceTest {
         when(summary.getMinimumValue()).thenReturn(92.0);
         when(metricRepository.summarizeWindow(1L, "cpu_usage_percent", windowStart,
                 windowStart.plusMinutes(5))).thenReturn(summary);
-        when(alertRepository.findFirstByAlertRuleIdAndStatus(42L, "OPEN")).thenReturn(Optional.empty());
+        when(alertRepository.findByAlertRuleIdAndStatusIn(42L, List.of("OPEN", "ACKNOWLEDGED")))
+                .thenReturn(List.of());
 
         alertEvaluationService.evaluate(current);
 
         verify(alertRepository).save(any(Alert.class));
+    }
+
+    @Test
+    void shouldResolveOpenAlertsWhenMetricReturnsToHealthyValue() {
+        AlertRule rule = rule(">", 80.0);
+        Alert activeAlert = new Alert();
+        activeAlert.setStatus("OPEN");
+        when(alertRuleRepository.findByProject_IdAndMetricAndEnabledTrue(1L, "cpu_usage_percent"))
+                .thenReturn(List.of(rule));
+        when(alertRepository.findByAlertRuleIdAndStatusIn(42L, List.of("OPEN", "ACKNOWLEDGED")))
+                .thenReturn(List.of(activeAlert));
+
+        alertEvaluationService.evaluate(metricAbove(45.0));
+
+        assertThat(activeAlert.getStatus()).isEqualTo("RESOLVED");
+        verify(alertRepository).saveAll(List.of(activeAlert));
+        verify(alertNotificationService).notifyResolved(eq(activeAlert), eq(45.0), any(LocalDateTime.class));
+        verify(alertRepository, never()).save(any(Alert.class));
+    }
+
+    @Test
+    void shouldNotResolveActiveDurationAlertWhileCurrentSampleStillBreaches() {
+        AlertRule rule = rule(">", 80.0);
+        rule.setDuration("5m");
+        when(alertRuleRepository.findByProject_IdAndMetricAndEnabledTrue(1L, "cpu_usage_percent"))
+                .thenReturn(List.of(rule));
+        when(metricRepository
+                .findFirstByProject_IdAndMetricNameAndCapturedAtLessThanEqualOrderByCapturedAtDescIdDesc(
+                        eq(1L), eq("cpu_usage_percent"), any(LocalDateTime.class)))
+                .thenReturn(Optional.empty());
+
+        alertEvaluationService.evaluate(metricAbove(92.0));
+
+        verify(alertRepository, never()).findByAlertRuleIdAndStatusIn(any(), anyList());
     }
 
     @Test

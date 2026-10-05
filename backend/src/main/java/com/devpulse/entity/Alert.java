@@ -22,7 +22,7 @@ public class Alert {
     @Column(nullable = false, length = 50)
     private String severity;
 
-    /** OPEN | ACKNOWLEDGED */
+    /** OPEN | ACKNOWLEDGED | RESOLVED */
     @Column(nullable = false, length = 50)
     private String status = "OPEN";
 

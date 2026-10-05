@@ -19,19 +19,24 @@ import java.util.Optional;
  * Evaluates enabled {@link AlertRule}s against each newly ingested {@link Metric}
  * and opens an {@link Alert} when the threshold is breached. Rules with a
  * configured duration require every observed sample in that window to breach.
+ * Active alerts are resolved when a later sample returns to a healthy value.
  */
 @Service
 public class AlertEvaluationService {
 
+    private static final List<String> ACTIVE_STATUSES = List.of("OPEN", "ACKNOWLEDGED");
+
     private final AlertRuleRepository alertRuleRepository;
     private final AlertRepository alertRepository;
     private final MetricRepository metricRepository;
+    private final AlertNotificationService alertNotificationService;
 
     public AlertEvaluationService(AlertRuleRepository alertRuleRepository, AlertRepository alertRepository,
-                                  MetricRepository metricRepository) {
+                                  MetricRepository metricRepository, AlertNotificationService alertNotificationService) {
         this.alertRuleRepository = alertRuleRepository;
         this.alertRepository = alertRepository;
         this.metricRepository = metricRepository;
+        this.alertNotificationService = alertNotificationService;
     }
 
     public void evaluate(Metric metric) {
@@ -40,18 +45,19 @@ public class AlertEvaluationService {
                 .findByProject_IdAndMetricAndEnabledTrue(projectId, metric.getMetricName());
 
         for (AlertRule rule : rules) {
-            if (isBreaching(rule, metric)) {
+            if (!breaches(rule, metric.getMetricValue())) {
+                resolveActiveAlerts(rule, metric.getMetricValue(), metric.getCapturedAt());
+                continue;
+            }
+
+            Duration duration = AlertDuration.parse(rule.getDuration());
+            if (duration == null || isBreachingForDuration(rule, metric, duration)) {
                 openAlertIfNotAlreadyOpen(rule, metric);
             }
         }
     }
 
-    private boolean isBreaching(AlertRule rule, Metric metric) {
-        Duration duration = AlertDuration.parse(rule.getDuration());
-        if (duration == null) {
-            return breaches(rule, metric.getMetricValue());
-        }
-
+    private boolean isBreachingForDuration(AlertRule rule, Metric metric, Duration duration) {
         LocalDateTime windowStart = metric.getCapturedAt().minus(duration);
         Long projectId = metric.getProject().getId();
         Optional<Metric> precedingSample = metricRepository
@@ -92,8 +98,7 @@ public class AlertEvaluationService {
     }
 
     private void openAlertIfNotAlreadyOpen(AlertRule rule, Metric metric) {
-        boolean alreadyOpen = alertRepository.findFirstByAlertRuleIdAndStatus(rule.getId(), "OPEN").isPresent();
-        if (alreadyOpen) {
+        if (!alertRepository.findByAlertRuleIdAndStatusIn(rule.getId(), ACTIVE_STATUSES).isEmpty()) {
             return;
         }
 
@@ -104,6 +109,19 @@ public class AlertEvaluationService {
         alert.setMessage(String.format(
                 "%s: %s %s %s (current value: %s)",
                 rule.getName(), rule.getMetric(), rule.getOperator(), rule.getThreshold(), metric.getMetricValue()));
-        alertRepository.save(alert);
+        Alert savedAlert = alertRepository.save(alert);
+        alertNotificationService.notifyOpened(savedAlert, metric.getMetricValue(), metric.getCapturedAt());
+    }
+
+    private void resolveActiveAlerts(AlertRule rule, Double currentValue, LocalDateTime occurredAt) {
+        List<Alert> activeAlerts = alertRepository.findByAlertRuleIdAndStatusIn(rule.getId(), ACTIVE_STATUSES);
+        if (activeAlerts.isEmpty()) {
+            return;
+        }
+
+        activeAlerts.forEach(alert -> alert.setStatus("RESOLVED"));
+        alertRepository.saveAll(activeAlerts);
+        activeAlerts.forEach(alert ->
+                alertNotificationService.notifyResolved(alert, currentValue, occurredAt));
     }
 }

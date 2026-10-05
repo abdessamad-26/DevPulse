@@ -2,6 +2,7 @@ package com.devpulse.service;
 
 import com.devpulse.entity.Alert;
 import com.devpulse.entity.AlertRule;
+import com.devpulse.exception.ApiException;
 import com.devpulse.entity.Project;
 import com.devpulse.repository.AlertRepository;
 import org.junit.jupiter.api.Test;
@@ -70,6 +71,25 @@ class AlertServiceTest {
 
         assertThatThrownBy(() -> alertService.acknowledge(6L, authentication))
                 .isInstanceOf(AccessDeniedException.class);
+        verify(alertRepository, never()).save(any(Alert.class));
+    }
+
+    @Test
+    void shouldNotAcknowledgeResolvedAlert() {
+        Project project = new Project();
+        project.setId(1L);
+        AlertRule rule = new AlertRule();
+        rule.setProject(project);
+        Alert alert = new Alert();
+        alert.setAlertRule(rule);
+        alert.setStatus("RESOLVED");
+
+        when(alertRepository.findById(7L)).thenReturn(Optional.of(alert));
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
+
+        assertThatThrownBy(() -> alertService.acknowledge(7L, authentication))
+                .isInstanceOf(ApiException.class)
+                .hasMessage("Resolved alerts cannot be acknowledged");
         verify(alertRepository, never()).save(any(Alert.class));
     }
 }

@@ -321,9 +321,21 @@ sample and every observed sample in the preceding window must breach; at least
 one breaching sample at or before the window start is required. Any observed
 non-breaching sample interrupts the window. Missing samples are not synthesized
 or treated as failures. Rules without a duration retain immediate evaluation.
+An `OPEN` or `ACKNOWLEDGED` alert is automatically marked `RESOLVED` when the
+next ingested sample for its metric no longer breaches the rule. A later
+breach creates a new alert. Resolved alerts cannot be acknowledged.
 
-**Known limitation:** alerts are not automatically resolved when a metric
-returns to a healthy value; acknowledgement remains a manual action.
+### Alert webhook notifications
+
+Set the backend environment variable `ALERT_WEBHOOK_URL` to an operator-managed
+HTTP(S) endpoint to receive `POST` notifications for `alert.opened` and
+`alert.resolved` events. Leave it empty to disable delivery. Each JSON payload
+contains the event name, alert and rule identifiers, project ID, threshold,
+observed value, severity, status, message, and event timestamp. The backend
+uses a bounded asynchronous queue; delivery failures and queue saturation are
+logged and do not fail metric ingestion. Delivery is best-effort (there is no
+persistent retry/outbox), and HTTP requests have bounded connect/read timeouts.
+Keep the URL operator-controlled and use HTTPS for remote endpoints.
 
 ## Deployments
 

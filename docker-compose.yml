@@ -33,6 +33,7 @@ services:
       # Demo mode creates a known account (demo@devpulse.local). Off unless explicitly enabled in .env.
       DEMO_MODE: ${DEMO_MODE:-false}
       CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:4200
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       # No default on purpose: the backend refuses to start without a strong secret.
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - copy .env.example to .env (or run scripts/dev.ps1)}
     healthcheck:

@@ -98,7 +98,7 @@ export class DashboardComponent {
   readonly deployments = signal<Deployment[]>([]);
 
   readonly openIncidents = computed(() => this.incidents().filter((i) => !['RESOLVED', 'CLOSED'].includes(i.status.toUpperCase())));
-  readonly openAlerts = computed(() => this.alerts().filter((a) => a.status.toUpperCase() === 'OPEN'));
+  readonly openAlerts = computed(() => this.alerts().filter((a) => ['OPEN', 'ACKNOWLEDGED'].includes(a.status.toUpperCase())));
   readonly lastDeployment = computed(() => this.deployments()[0] ?? null);
 
   constructor() {

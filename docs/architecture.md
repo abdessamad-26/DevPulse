@@ -234,10 +234,12 @@ The AI analysis pipeline is intentionally resilient and practical.
 1. collect metrics, logs and errors
 2. normalize event data
 3. apply deterministic threshold rules immediately or across a configured metric-time window
-4. compute statistical anomaly scores
-5. correlate with deployment timeline
-6. classify incident severity
-7. generate recommendations
+4. resolve active alerts when a new sample returns to a healthy value
+5. enqueue `alert.opened` / `alert.resolved` webhook notifications when configured
+6. compute statistical anomaly scores
+7. correlate with deployment timeline
+8. classify incident severity
+9. generate recommendations
 8. optionally enrich with an external LLM when credentials exist
 
 ### Fallback strategy
@@ -373,7 +375,7 @@ Comme pour le service AI, `npm install && ng build` a été **réellement exécu
 - ✅ Pages réelles branchées sur le backend : Login (formulaire réactif, validation), Dashboard (liste/création de projets via `/api/projects`), Incidents (liste + changement de statut via `/api/incidents`)
 - ⚠️ Pages Logs/Metrics/Deployments/Alerts/Settings : **placeholders honnêtes** ("pas encore construit"), pas de fausses données — le backend a déjà les API correspondantes (voir docs/api.md), il manque juste les composants Angular
 - ❌ **Aucun test unitaire/composant Angular écrit** (`ng test` non lancé — pas de fichiers `.spec.ts`). C'est un vrai manque par rapport à l'objectif "frontend coverage > 70%".
-- ❌ Charts (Chart.js, installé mais pas utilisé), dark mode, breadcrumbs, notifications : pas encore faits
+- ❌ Charts (Chart.js, installé mais pas utilisé), dark mode et breadcrumbs : pas encore faits. Les notifications webhook sortantes sont configurables côté backend ; les notifications in-app ne sont pas encore implémentées.
 - Anciens fichiers HTML/JS statiques déplacés dans `frontend/legacy-static-prototype/` (non utilisés par le build Angular, gardés pour référence uniquement)
 
 ### AI Service (Python/FastAPI) — build/tests réellement vérifiés

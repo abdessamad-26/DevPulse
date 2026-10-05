@@ -5,6 +5,7 @@ import com.devpulse.exception.ApiException;
 import com.devpulse.repository.AlertRepository;
 import com.devpulse.util.PageRequestSupport;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +39,10 @@ public class AlertService {
             projectAccessService.requireWritableProject(projectId, authentication);
         } else {
             projectAccessService.requireAdminForUnscopedResource(authentication);
+        }
+
+        if ("RESOLVED".equals(alert.getStatus())) {
+            throw new ApiException("Resolved alerts cannot be acknowledged", HttpStatus.CONFLICT);
         }
 
         alert.setStatus("ACKNOWLEDGED");

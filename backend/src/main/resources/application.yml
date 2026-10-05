@@ -47,6 +47,8 @@ devpulse:
     # Chaos simulations are refused for projects whose environment is "production"
     # unless this is explicitly set to true. See ChaosService.
     allow-production: ${CHAOS_ALLOW_PRODUCTION:false}
+  alerts:
+    webhook-url: ${ALERT_WEBHOOK_URL:}
 
 management:
   endpoints:
