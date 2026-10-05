@@ -1,115 +1,287 @@
-# DevPulse — API Reference (Overview)
+# DevPulse API
 
-This document lists the core API endpoints for DevPulse. Full OpenAPI specs will be generated from controller annotations and placed under `docs/openapi.yaml`.
+This document describes the endpoints currently implemented in the repository. The backend API runs at `http://localhost:8080`; the AI service also exposes its own endpoints on port `8000`. Request validation errors use the backend's structured error response.
 
-Base path: `/api`
+## Authentication
 
-## Auth ✅ implémenté et testé (voir `AuthController`, `AuthFlowIntegrationTest`)
-- POST `/api/auth/register` — Register a new user
-  - Body: `{ "firstName": "", "lastName": "", "email": "", "password": "" }` (password ≥ 8 caractères)
-  - Response: `201 Created` `{ "id": ..., "email": ..., "firstName": ..., "lastName": ..., "role": "DEVELOPER" }`
+The backend issues JWT access and refresh tokens. Except for registration, login, refresh, logout, and the health endpoints, backend routes require an access token:
 
-- POST `/api/auth/login` — Login
-  - Body: `{ "email": "", "password": "" }`
-  - Response: `200 OK` `{ "token": "...", "refreshToken": "...", "user": { ... } }`
+```http
+Authorization: Bearer <access-token>
+```
 
-- POST `/api/auth/refresh` — Refresh access token
-  - Body: `{ "refreshToken": "..." }`
-  - Response: `200 OK` `{ "token": "...", "refreshToken": "...", "user": { ... } }`
-  - ⚠️ Pas de rotation : le même refresh token est renvoyé tant qu'il est valide (voir `docs/architecture.md#16`).
+### `POST /api/auth/register`
 
-- POST `/api/auth/logout` — 204 No Content
-  - ⚠️ No-op côté serveur (JWT stateless, pas de blacklist) : le client doit simplement supprimer ses tokens.
+Create an account. The password must contain at least eight characters.
 
-## Users (ADMIN)
-- GET `/api/users` — List users (pagination)
-- GET `/api/users/{id}` — Get user
-- POST `/api/users` — Create user
-- PATCH `/api/users/{id}` — Update user
-
-## Projects ✅ implementé et testé (partiellement — voir `ProjectController`)
-- GET `/api/projects` — List **my own** projects (Auth: Bearer requis, tous rôles)
-- POST `/api/projects` — Create project (Auth: Bearer requis, rôle `ADMIN` ou `DEVELOPER` uniquement — `VIEWER` reçoit 403)
-  - Body: `{ "name": "...", "description": "...", "repository": "...", "environment": "development|staging|production" }`
-- GET `/api/projects/{id}` — ❌ pas encore implémenté
-- PATCH `/api/projects/{id}` — ❌ pas encore implémenté
-
-## Services ✅ implémenté et testé (voir `ServiceController`, `ProjectResourcesIntegrationTest`)
-- GET `/api/projects/{projectId}/services` — List services for a project (Auth: Bearer requis, doit être propriétaire du projet ou ADMIN)
-- POST `/api/projects/{projectId}/services` — Register a service (rôle `ADMIN` ou `DEVELOPER`, doit posséder le projet)
-  - Body: `{ "name": "...", "type": "http|worker|...", "healthStatus": "HEALTHY" }` (healthStatus optionnel, défaut `HEALTHY`)
-
-## Metrics (ingest & query) ✅ implémenté et testé (voir `MetricController`, `MetricServiceTest`, `ObservabilityIntegrationTest`)
-- POST `/api/projects/{projectId}/metrics` — Ingest metrics (bulk, rôle `ADMIN`/`DEVELOPER`). Chaque point déclenche immédiatement l'évaluation des `AlertRule` du projet pour cette métrique.
-  - Body: `{ "points": [{ "serviceName": "..." (optionnel), "metricName": "cpu_usage_percent", "value": 87.5, "unit": "%" (optionnel), "capturedAt": "..." (optionnel) }] }`
-- GET `/api/projects/{projectId}/metrics?metric=...&from=...&to=...` — Query metrics. Sans `metric`, retourne tout l'historique du projet (le plus récent d'abord). Avec `metric`, filtre sur `from`/`to` (par défaut : dernières 24h), tri chronologique.
-
-## Logs (ingest & search) ✅ implémenté et testé (voir `LogController`, `ObservabilityIntegrationTest`)
-- POST `/api/projects/{projectId}/logs` — Ingest logs (bulk, rôle `ADMIN`/`DEVELOPER`)
-  - Body: `{ "entries": [{ "serviceName": "...", "environment": "...", "level": "ERROR", "message": "...", "timestamp": "..." (optionnel) }] }`
-- GET `/api/projects/{projectId}/logs?service=&environment=&level=&q=&from=&to=&page=&size=` — Search logs (pagination Spring standard : réponse `Page` avec `content`, `totalElements`, etc.)
-
-## Incidents ✅ implémenté et testé (voir `IncidentController`, `IncidentServiceTest`)
-- GET `/api/incidents?projectId=...` — List incidents for a project (Auth: Bearer requis, doit posséder le projet ou ADMIN)
-- POST `/api/incidents` — Create incident manually (rôle `ADMIN` ou `DEVELOPER`). Statut initial toujours `OPEN`.
-  - Body: `{ "projectId": ..., "serviceId": ... (optionnel), "serviceName": "..." (optionnel, si pas de serviceId), "title": "...", "description": "...", "severity": "LOW|MEDIUM|HIGH|CRITICAL" }`
-- GET `/api/incidents/{id}` — ❌ pas encore implémenté (seule la liste filtrée par projet existe)
-- PATCH `/api/incidents/{id}` — Update status / root cause / recommendations (rôle `ADMIN` ou `DEVELOPER`)
-  - Body: `{ "status": "OPEN|INVESTIGATING|RESOLVED", "rootCause": "...", "recommendations": "...", "confidenceScore": 0.87 }`
-  - `resolvedAt` est renseigné automatiquement au premier passage à `RESOLVED`.
-  - Création automatique par le pipeline IA : ❌ pas encore branchée (l'`AiAnalysisService` existant appelle un service Python qui n'existe pas encore).
-
-## Alerts & Alert Rules ✅ implémenté et testé (voir `AlertRuleController`, `AlertController`, `AlertEvaluationServiceTest`)
-- POST `/api/projects/{projectId}/alert-rules` — Create rule (rôle `ADMIN`/`DEVELOPER`)
-  - Body: `{ "name": "High CPU", "metric": "cpu_usage_percent", "operator": ">|<|>=|<=|==", "threshold": 80.0, "duration": "5m" (optionnel, stocké mais **pas encore évalué** — voir limitation ci-dessous), "severity": "LOW|MEDIUM|HIGH|CRITICAL", "enabled": true }`
-- GET `/api/projects/{projectId}/alert-rules` — List rules for a project
-- GET `/api/alerts?projectId=...` — List alerts for a project, most recent first
-- POST `/api/alerts/{id}/ack` — Acknowledge alert (rôle `ADMIN`/`DEVELOPER`)
-  - ⚠️ **Limitation connue** : l'évaluation se fait à chaque point de métrique ingéré, en comparant immédiatement à `threshold` — le champ `duration` (ex. "5m", condition qui doit tenir sur une fenêtre de temps) n'est **pas encore évalué**, une seule valeur qui dépasse le seuil ouvre l'alerte. Un vrai moteur à fenêtre glissante reste à faire.
-
-## Deployments ✅ implémenté et testé (voir `DeploymentController`, `DeploymentServiceTest`)
-- POST `/api/deployments` — Record a deployment event (rôle `ADMIN` ou `DEVELOPER`, doit posséder le projet). `author` est déduit automatiquement du token, pas envoyé par le client.
-  - Body: `{ "projectId": ..., "version": "v1.0.0", "commit": "..." (optionnel), "branch": "..." (optionnel), "environment": "development|staging|production", "status": "SUCCESS|FAILED|IN_PROGRESS", "startedAt": "..." (optionnel), "finishedAt": "..." (optionnel) }`
-- GET `/api/deployments?projectId=...` — List deployments for a project, most recent first
-
-## Chaos (admin-only, gated)
-- POST `/api/chaos/simulate` — Trigger a simulation (requires ADMIN and demo mode enabled)
-
-## AI
-- POST `/api/ai/analyze` — Analyze an incident or dataset
-  - Body: `{ "incidentId": "..." }` or `{ "metrics": [...], "logs": [...] }`
-  - Response: `{ "summary": "...", "rootCauseCandidates": [...], "recommendations": [...], "confidence": 0.87 }`
-
-## Errors
-All endpoints return structured error envelopes:
 ```json
 {
-  "timestamp": "...",
+  "firstName": "Ada",
+  "lastName": "Lovelace",
+  "email": "ada@example.test",
+  "password": "a-long-password"
+}
+```
+
+Returns `201 Created` with the new user's `id`, `email`, `firstName`, `lastName`, and `role`.
+
+### `POST /api/auth/login`
+
+```json
+{ "email": "ada@example.test", "password": "a-long-password" }
+```
+
+Returns an access `token`, a `refreshToken`, and a `user` summary.
+
+### `POST /api/auth/refresh`
+
+```json
+{ "refreshToken": "<refresh-token>" }
+```
+
+Returns a new authentication response. **Refresh tokens are not rotated or revoked server-side yet**; logout is stateless and does not invalidate previously issued tokens.
+
+### `POST /api/auth/logout`
+
+Returns `204 No Content`. The client must discard its tokens; the server does not maintain a token blacklist.
+
+## Projects and services
+
+### `POST /api/projects`
+
+Create a project (`ADMIN` or `DEVELOPER`).
+
+```json
+{
+  "name": "Payments",
+  "description": "Payments API",
+  "repository": "https://example.test/payments",
+  "environment": "development"
+}
+```
+
+`name` and `environment` are required.
+
+### `GET /api/projects`
+
+List projects owned by the authenticated user.
+
+### `GET /api/projects/{projectId}`
+
+Get a project the authenticated user can access.
+
+### `POST /api/projects/{projectId}/services`
+
+Create a service in an accessible project (`ADMIN` or `DEVELOPER`).
+
+```json
+{ "name": "payments-api", "type": "http", "healthStatus": "HEALTHY" }
+```
+
+### `GET /api/projects/{projectId}/services`
+
+List services in an accessible project.
+
+Project access is currently based on project ownership (with administrative access); project membership management has not been implemented.
+
+## Metrics and logs
+
+### `POST /api/projects/{projectId}/metrics`
+
+Ingest metric points (`ADMIN` or `DEVELOPER`).
+
+```json
+{
+  "points": [
+    {
+      "serviceName": "payments-api",
+      "metricName": "cpu_usage_percent",
+      "value": 87.5,
+      "unit": "%",
+      "capturedAt": "2026-10-05T12:00:00"
+    }
+  ]
+}
+```
+
+`metricName` and `value` are required. Ingested points are evaluated against enabled alert rules immediately.
+
+### `GET /api/projects/{projectId}/metrics`
+
+Query metrics the caller can access. Optional query parameters: `metric`, `from`, and `to` (ISO date-time). Results are returned as a list; the endpoint does not currently paginate.
+
+### `POST /api/projects/{projectId}/logs`
+
+Ingest log entries (`ADMIN` or `DEVELOPER`).
+
+```json
+{
+  "entries": [
+    {
+      "serviceName": "payments-api",
+      "environment": "production",
+      "level": "ERROR",
+      "message": "Payment provider timed out",
+      "timestamp": "2026-10-05T12:00:00"
+    }
+  ]
+}
+```
+
+Each entry requires `message`.
+
+### `GET /api/projects/{projectId}/logs`
+
+Search logs. Optional query parameters: `service`, `environment`, `level`, `q`, `from`, `to`, `page` (default `0`), and `size` (default `20`). Returns a Spring `Page` response.
+
+## Incidents
+
+### `POST /api/incidents`
+
+Create an incident (`ADMIN` or `DEVELOPER`).
+
+```json
+{
+  "projectId": 1,
+  "serviceId": 2,
+  "serviceName": "payments-api",
+  "title": "Payment errors",
+  "description": "Provider requests are timing out",
+  "severity": "HIGH"
+}
+```
+
+`projectId`, `title`, and `severity` are required. `serviceId`, `serviceName`, and `startedAt` are optional.
+
+### `GET /api/incidents?projectId={projectId}`
+
+List incidents for a project the caller can access.
+
+### `GET /api/incidents/{id}`
+
+Get an incident the caller can access.
+
+### `PATCH /api/incidents/{id}`
+
+Update incident status and analysis fields (`ADMIN` or `DEVELOPER`).
+
+```json
+{
+  "status": "INVESTIGATING",
+  "rootCause": "Provider timeout",
+  "recommendations": "Check provider availability",
+  "confidenceScore": 0.87
+}
+```
+
+`status` is required.
+
+### `POST /api/incidents/{id}/analyze`
+
+Run the backend's incident-analysis flow for an accessible incident (`ADMIN` or `DEVELOPER`).
+
+## Alert rules and alerts
+
+### `POST /api/projects/{projectId}/alert-rules`
+
+Create an alert rule (`ADMIN` or `DEVELOPER`).
+
+```json
+{
+  "name": "High CPU",
+  "metric": "cpu_usage_percent",
+  "operator": ">",
+  "threshold": 80,
+  "duration": "5m",
+  "severity": "HIGH",
+  "enabled": true
+}
+```
+
+### `GET /api/projects/{projectId}/alert-rules`
+
+List alert rules for an accessible project.
+
+### `GET /api/alerts?projectId={projectId}`
+
+List alerts for an accessible project.
+
+### `POST /api/alerts/{id}/ack`
+
+Acknowledge an alert (`ADMIN` or `DEVELOPER`).
+
+**Known limitation:** rule `duration` is stored but not evaluated. A single breaching metric point can open an alert; a sliding-window evaluator is not implemented.
+
+## Deployments
+
+### `POST /api/deployments`
+
+Record a deployment (`ADMIN` or `DEVELOPER`).
+
+```json
+{
+  "projectId": 1,
+  "version": "v1.2.0",
+  "commit": "abc123",
+  "branch": "main",
+  "environment": "production",
+  "status": "SUCCESS",
+  "startedAt": "2026-10-05T11:50:00",
+  "finishedAt": "2026-10-05T11:51:00"
+}
+```
+
+`projectId`, `version`, `environment`, and `status` are required. The deployment author is derived from the authenticated user.
+
+### `GET /api/deployments?projectId={projectId}`
+
+List deployments for an accessible project.
+
+## Chaos simulations
+
+### `POST /api/projects/{projectId}/chaos`
+
+Create a simulated chaos event (`ADMIN` or `DEVELOPER`).
+
+```json
+{ "action": "LATENCY", "targetService": "payments-api" }
+```
+
+### `GET /api/projects/{projectId}/chaos`
+
+List simulations for an accessible project.
+
+These endpoints do **not** affect real infrastructure; they create records and related incidents. Simulations are blocked for projects marked `production` unless `CHAOS_ALLOW_PRODUCTION=true`.
+
+## AI service
+
+These endpoints are exposed by the FastAPI service at `http://localhost:8000`, not by the Spring API.
+
+- `GET /health` — liveness response.
+- `GET /ready` — readiness response.
+- `POST /api/analysis/incidents` — deterministic incident analysis. The request contains `title`, `description`, optional `severity`, `service`, and `recent_logs`.
+- `POST /api/analysis/anomalies` — z-score anomaly detection.
+
+Anomaly request example:
+
+```json
+{ "history": [10, 11, 9, 10, 12], "value": 80, "threshold": 3 }
+```
+
+The response fields are `isAnomaly`, `zScore`, `mean`, `stdDev`, and `reason`. `zScore` is `null` when the value is anomalous against a constant history because the mathematical score is unbounded and JSON has no representation for infinity.
+
+## Errors and current gaps
+
+Backend errors use this envelope:
+
+```json
+{
+  "timestamp": "2026-10-05T12:00:00",
   "status": 400,
   "error": "Bad Request",
-  "message": "Validation failed: ...",
+  "message": "Validation failed",
   "path": "/api/..."
 }
 ```
 
-## Authentication
-- All endpoints except `/auth/*` require `Authorization: Bearer <token>`
-- Role-based access enforced in service layer
-
-## Pagination
-- Use standard `page` & `size` query params; responses include `totalElements`, `totalPages`, `page`, `size`.
-
-## Chaos Engineering ✅ implémenté et testé (voir `ChaosController`, `ChaosServiceTest`)
-- POST `/api/projects/{projectId}/chaos` — Trigger a simulation (rôle `ADMIN`/`DEVELOPER` uniquement — `VIEWER` reçoit 403)
-  - Body: `{ "action": "KILL_POD|CPU_LOAD|LATENCY|HTTP_500|DB_FAILURE", "targetService": "..." (optionnel) }`
-  - ⚠️ **Simulation uniquement** : aucune infrastructure Kubernetes réelle n'est affectée (Phase 7 pas encore faite). L'appel crée un `Incident` (sévérité selon l'action) pour démontrer le flux détection→investigation→résolution.
-  - Refusé par défaut sur un projet `environment=production` (message explicite), sauf `CHAOS_ALLOW_PRODUCTION=true`.
-- GET `/api/projects/{projectId}/chaos` — Historique des simulations pour un projet
-
-## Demo Mode ✅ implémenté (voir `DemoDataSeeder`)
-- `DEMO_MODE=true` (variable d'environnement) : au démarrage, crée un utilisateur `demo@devpulse.local` / `DemoPass123!` (identifiants de démo, jamais un vrai secret), un projet avec 3 services, 2 incidents, 3 déploiements, une règle d'alerte + une alerte réellement déclenchée via `AlertEvaluationService`. Idempotent : ne recrée rien si l'utilisateur demo existe déjà.
-
-## Users ❌ pas encore implémenté
-- Pas de `/api/users` (gestion des comptes par un ADMIN) pour l'instant.
-
-> Note: This is an overview. I will generate a full OpenAPI YAML from controllers (or hand-author `docs/openapi.yaml`) next.
+There is no user-administration API or membership/invitation API yet. DTO coverage is incomplete, and only log search is paginated. Some response endpoints currently serialize persistence entities directly.

@@ -28,7 +28,8 @@ def test_handles_zero_variance_history_with_matching_value():
 def test_handles_zero_variance_history_with_different_value():
     result = z_score_anomaly([10.0, 10.0, 10.0], 15.0)
     assert result["is_anomaly"] is True
-    assert result["z_score"] == float("inf")
+    assert result["z_score"] is None
+    assert "unbounded z-score" in result["reason"]
 
 
 def test_respects_custom_threshold():

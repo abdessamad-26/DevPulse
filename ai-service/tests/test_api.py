@@ -44,3 +44,12 @@ def test_detect_anomalies_matches_expected_camel_case_contract():
     body = response.json()
     assert set(body.keys()) == {"isAnomaly", "zScore", "mean", "stdDev", "reason"}
     assert body["isAnomaly"] is True
+
+
+def test_detect_anomalies_serializes_zero_variance_outlier_as_valid_json():
+    response = client.post(
+        "/api/analysis/anomalies",
+        json={"history": [10, 10, 10], "value": 15},
+    )
+    assert response.status_code == 200
+    assert response.json()["zScore"] is None

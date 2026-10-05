@@ -5,6 +5,7 @@ This is the "stats" layer referenced in docs/architecture.md's AI design
 to the keyword-based IncidentAnalyzer, useful for flagging a metric value
 that deviates sharply from its recent history without needing a trained model.
 """
+import math
 import statistics
 
 
@@ -28,9 +29,9 @@ def z_score_anomaly(history: list[float], value: float, threshold: float = 3.0) 
 
     if std_dev == 0:
         is_anomaly = value != mean
-        z = float("inf") if is_anomaly else 0.0
+        z = None if is_anomaly else 0.0
         reason = (
-            "History has zero variance; any different value is flagged."
+            "History has zero variance; any different value is flagged with an unbounded z-score."
             if is_anomaly
             else "Value matches constant history."
         )
@@ -38,5 +39,13 @@ def z_score_anomaly(history: list[float], value: float, threshold: float = 3.0) 
 
     z = (value - mean) / std_dev
     is_anomaly = abs(z) > threshold
+    if not math.isfinite(z):
+        return {
+            "is_anomaly": is_anomaly,
+            "z_score": None,
+            "mean": mean,
+            "std_dev": std_dev,
+            "reason": "The calculated z-score is unbounded and cannot be represented as a finite JSON number.",
+        }
     reason = f"|z-score|={abs(z):.2f} {'exceeds' if is_anomaly else 'is within'} threshold {threshold}."
     return {"is_anomaly": is_anomaly, "z_score": z, "mean": mean, "std_dev": std_dev, "reason": reason}
