@@ -236,8 +236,8 @@ The AI analysis pipeline is intentionally resilient and practical.
 3. apply deterministic threshold rules immediately or across a configured metric-time window
 4. resolve active alerts when a new sample returns to a healthy value
 5. enqueue `alert.opened` / `alert.resolved` webhook notifications when configured
-6. compute statistical anomaly scores
-7. correlate with deployment timeline
+6. correlate incidents with deployments from the preceding 24 hours
+7. compute statistical anomaly scores
 8. classify incident severity
 9. generate recommendations
 8. optionally enrich with an external LLM when credentials exist

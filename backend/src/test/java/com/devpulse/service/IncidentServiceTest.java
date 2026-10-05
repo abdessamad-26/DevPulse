@@ -4,9 +4,11 @@ import com.devpulse.dto.IncidentAnalysisResponse;
 import com.devpulse.dto.IncidentCreateRequest;
 import com.devpulse.dto.IncidentUpdateRequest;
 import com.devpulse.entity.Incident;
+import com.devpulse.entity.Deployment;
 import com.devpulse.entity.Project;
 import com.devpulse.entity.ServiceEntity;
 import com.devpulse.exception.ApiException;
+import com.devpulse.repository.DeploymentRepository;
 import com.devpulse.repository.IncidentRepository;
 import com.devpulse.repository.ServiceRepository;
 import org.junit.jupiter.api.Test;
@@ -16,7 +18,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.data.domain.PageRequest;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +35,9 @@ class IncidentServiceTest {
 
     @Mock
     private IncidentRepository incidentRepository;
+
+    @Mock
+    private DeploymentRepository deploymentRepository;
 
     @Mock
     private ServiceRepository serviceRepository;
@@ -177,6 +185,33 @@ class IncidentServiceTest {
         Incident found = incidentService.getIncident(10L, authentication);
 
         assertThat(found.getTitle()).isEqualTo("Latency spike");
+    }
+
+    @Test
+    void shouldCorrelateRecentDeploymentsOnlyForTheAccessibleProjectAndIncidentWindow() {
+        LocalDateTime incidentTime = LocalDateTime.of(2026, 10, 5, 14, 0);
+        Project project = new Project();
+        project.setId(1L);
+        Incident incident = new Incident();
+        incident.setId(10L);
+        incident.setProject(project);
+        incident.setStartedAt(incidentTime);
+        Deployment deployment = new Deployment();
+        deployment.setId(20L);
+        deployment.setProject(project);
+        deployment.setVersion("v2.4.0");
+        deployment.setStatus("SUCCESS");
+        when(incidentRepository.findById(10L)).thenReturn(Optional.of(incident));
+        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(deploymentRepository.findCorrelatedDeployments(
+                1L, incidentTime.minusHours(24), incidentTime, PageRequest.of(0, 10)))
+                .thenReturn(List.of(deployment));
+
+        var correlations = incidentService.correlateDeployments(10L, authentication);
+
+        assertThat(correlations.incidentTime()).isEqualTo(incidentTime);
+        assertThat(correlations.windowStart()).isEqualTo(incidentTime.minusHours(24));
+        assertThat(correlations.deployments()).extracting("version").containsExactly("v2.4.0");
     }
 
     @Test

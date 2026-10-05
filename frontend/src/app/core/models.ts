@@ -69,6 +69,13 @@ export interface Incident {
   createdAt: string;
 }
 
+export interface IncidentDeploymentCorrelation {
+  incidentId: number;
+  incidentTime: string;
+  windowStart: string;
+  deployments: Deployment[];
+}
+
 export interface IncidentCreatePayload {
   projectId: number;
   serviceId?: number | null;

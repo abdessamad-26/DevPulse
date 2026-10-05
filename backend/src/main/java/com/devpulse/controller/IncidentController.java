@@ -1,6 +1,7 @@
 package com.devpulse.controller;
 
 import com.devpulse.dto.IncidentCreateRequest;
+import com.devpulse.dto.IncidentDeploymentCorrelationResponse;
 import com.devpulse.dto.IncidentUpdateRequest;
 import com.devpulse.dto.IncidentResponse;
 import com.devpulse.dto.PageResponse;
@@ -46,6 +47,12 @@ public class IncidentController {
     @GetMapping("/{id}")
     public ResponseEntity<IncidentResponse> get(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(IncidentResponse.from(incidentService.getIncident(id, authentication)));
+    }
+
+    @GetMapping("/{id}/correlated-deployments")
+    public ResponseEntity<IncidentDeploymentCorrelationResponse> correlateDeployments(
+            @PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(incidentService.correlateDeployments(id, authentication));
     }
 
     @PostMapping("/{id}/analyze")

@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -121,6 +122,8 @@ class ProjectResourcesIntegrationTest {
         incidentBody.put("serviceId", serviceId);
         incidentBody.put("title", "Latency spike on billing-api");
         incidentBody.put("severity", "high");
+        LocalDateTime incidentStartedAt = LocalDateTime.now().withNano(0);
+        incidentBody.put("startedAt", incidentStartedAt);
 
         MvcResult incidentResult = mockMvc.perform(post("/api/incidents")
                         .header("Authorization", "Bearer " + token)
@@ -152,12 +155,13 @@ class ProjectResourcesIntegrationTest {
                 .andExpect(status().isOk());
 
         // --- Deployment ---
-        Map<String, String> deploymentBody = Map.of(
-                "projectId", projectId.toString(),
-                "version", "v1.0.0",
-                "environment", "production",
-                "status", "success"
-        );
+        Map<String, Object> deploymentBody = new HashMap<>();
+        deploymentBody.put("projectId", projectId);
+        deploymentBody.put("version", "v1.0.0");
+        deploymentBody.put("environment", "production");
+        deploymentBody.put("status", "success");
+        deploymentBody.put("startedAt", incidentStartedAt.minusHours(2));
+        deploymentBody.put("finishedAt", incidentStartedAt.minusHours(2).plusMinutes(5));
         mockMvc.perform(post("/api/deployments")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -167,6 +171,18 @@ class ProjectResourcesIntegrationTest {
         mockMvc.perform(get("/api/deployments").param("projectId", projectId.toString())
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
+
+        MvcResult correlationsResult = mockMvc.perform(get(
+                                "/api/incidents/" + incidentId + "/correlated-deployments")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        Map<?, ?> correlations = objectMapper.readValue(
+                correlationsResult.getResponse().getContentAsString(), Map.class);
+        assertThat(correlations.get("incidentId")).isEqualTo(incidentId.intValue());
+        List<?> correlatedDeployments = (List<?>) correlations.get("deployments");
+        assertThat(correlatedDeployments).hasSize(1);
+        assertThat(((Map<?, ?>) correlatedDeployments.get(0)).get("version")).isEqualTo("v1.0.0");
     }
 
     @Test
@@ -184,6 +200,20 @@ class ProjectResourcesIntegrationTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/api/incidents").param("projectId", projectId.toString())
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isForbidden());
+
+        MvcResult incidentResult = mockMvc.perform(post("/api/incidents")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "projectId", projectId,
+                                "title", "Private incident",
+                                "severity", "HIGH"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Map<?, ?> incident = objectMapper.readValue(incidentResult.getResponse().getContentAsString(), Map.class);
+        mockMvc.perform(get("/api/incidents/" + incident.get("id") + "/correlated-deployments")
                         .header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isForbidden());
     }

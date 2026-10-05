@@ -10,6 +10,7 @@ import {
   DeploymentPayload,
   Incident,
   IncidentCreatePayload,
+  IncidentDeploymentCorrelation,
   LogEntry,
   LogFilters,
   MetricIngestPoint,
@@ -44,6 +45,9 @@ export class ApiService {
   // Incidents
   incidents(projectId: number, page = 0, size = 100): Observable<Page<Incident>> {
     return this.http.get<Page<Incident>>('/api/incidents', { params: this.pageParams(page, size).set('projectId', projectId) });
+  }
+  correlatedDeployments(incidentId: number): Observable<IncidentDeploymentCorrelation> {
+    return this.http.get<IncidentDeploymentCorrelation>(`/api/incidents/${incidentId}/correlated-deployments`);
   }
   createIncident(body: IncidentCreatePayload): Observable<Incident> {
     return this.http.post<Incident>('/api/incidents', body);

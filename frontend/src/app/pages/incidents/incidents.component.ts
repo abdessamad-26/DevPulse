@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { ProjectContext } from '../../core/project-context.service';
-import { Incident } from '../../core/models';
+import { Deployment, Incident } from '../../core/models';
 
 @Component({
   selector: 'app-incidents',
@@ -80,9 +80,30 @@ import { Incident } from '../../core/models';
                   <td class="muted" style="max-width:260px;">{{ i.rootCause || '—' }}</td>
                   <td class="muted">{{ i.detectedAt | date: 'short' }}</td>
                   <td>
+                    <button type="button" class="btn btn-sm" (click)="toggleCorrelations(i)">
+                      {{ expandedIncidentId() === i.id ? 'Hide deployments' : 'Related deployments' }}
+                    </button>
                     <button type="button" class="btn btn-sm" *ngIf="auth.canWrite()" [disabled]="analyzing() === i.id" (click)="analyze(i)">
                       {{ analyzing() === i.id ? 'Analyzing…' : 'Analyze' }}
                     </button>
+                  </td>
+                </tr>
+                <tr *ngIf="expandedIncidentId() === i.id">
+                  <td colspan="6">
+                    <p class="muted" *ngIf="loadingCorrelations() === i.id">Checking deployments from the 24 hours before this incident…</p>
+                    <p class="error-state" *ngIf="correlationErrors()[i.id]">{{ correlationErrors()[i.id] }}</p>
+                    <div class="stack" *ngIf="correlatedDeployments()[i.id] as deployments">
+                      <p class="muted" *ngIf="!deployments.length">No deployments found in the preceding 24-hour window.</p>
+                      @for (deployment of deployments; track deployment.id) {
+                        <div>
+                          <strong>{{ deployment.version }}</strong>
+                          <span class="muted"> · {{ deployment.status }} · {{ deployment.environment }} ·
+                            {{ deployment.finishedAt || deployment.startedAt || deployment.createdAt | date: 'short' }}
+                          </span>
+                          <span class="muted" *ngIf="deployment.commitHash"> · {{ deployment.commitHash }}</span>
+                        </div>
+                      }
+                    </div>
                   </td>
                 </tr>
               }
@@ -107,6 +128,10 @@ export class IncidentsComponent {
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
   readonly analyzing = signal<number | null>(null);
+  readonly expandedIncidentId = signal<number | null>(null);
+  readonly loadingCorrelations = signal<number | null>(null);
+  readonly correlatedDeployments = signal<Record<number, Deployment[]>>({});
+  readonly correlationErrors = signal<Record<number, string>>({});
 
   title = '';
   severity = 'MEDIUM';
@@ -117,9 +142,52 @@ export class IncidentsComponent {
       const projectId = this.projectContext.selectedId();
       if (!projectId) {
         this.incidents.set([]);
+        this.expandedIncidentId.set(null);
+        this.loadingCorrelations.set(null);
+        this.correlatedDeployments.set({});
+        this.correlationErrors.set({});
         return;
       }
       this.reload(projectId);
+    });
+  }
+
+  toggleCorrelations(incident: Incident): void {
+    if (this.expandedIncidentId() === incident.id) {
+      this.expandedIncidentId.set(null);
+      return;
+    }
+
+    this.expandedIncidentId.set(incident.id);
+    if (Object.prototype.hasOwnProperty.call(this.correlatedDeployments(), incident.id)) {
+      return;
+    }
+
+    this.loadingCorrelations.set(incident.id);
+    this.correlationErrors.update((errors) => {
+      const remaining = { ...errors };
+      delete remaining[incident.id];
+      return remaining;
+    });
+    this.api.correlatedDeployments(incident.id).subscribe({
+      next: (response) => {
+        this.correlatedDeployments.update((deployments) => ({
+          ...deployments,
+          [incident.id]: response.deployments,
+        }));
+        if (this.loadingCorrelations() === incident.id) {
+          this.loadingCorrelations.set(null);
+        }
+      },
+      error: (err) => {
+        this.correlationErrors.update((errors) => ({
+          ...errors,
+          [incident.id]: err?.error?.message ?? 'Failed to load related deployments.',
+        }));
+        if (this.loadingCorrelations() === incident.id) {
+          this.loadingCorrelations.set(null);
+        }
+      },
     });
   }
 

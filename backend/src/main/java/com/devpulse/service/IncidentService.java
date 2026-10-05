@@ -3,15 +3,20 @@ package com.devpulse.service;
 import com.devpulse.dto.IncidentAnalysisRequest;
 import com.devpulse.dto.IncidentAnalysisResponse;
 import com.devpulse.dto.IncidentCreateRequest;
+import com.devpulse.dto.IncidentDeploymentCorrelationResponse;
+import com.devpulse.dto.DeploymentResponse;
 import com.devpulse.dto.IncidentUpdateRequest;
+import com.devpulse.entity.Deployment;
 import com.devpulse.entity.Incident;
 import com.devpulse.entity.Project;
 import com.devpulse.entity.ServiceEntity;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.IncidentRepository;
+import com.devpulse.repository.DeploymentRepository;
 import com.devpulse.repository.ServiceRepository;
 import com.devpulse.util.PageRequestSupport;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -25,17 +30,22 @@ public class IncidentService {
 
     private static final Set<String> VALID_SEVERITIES = Set.of("LOW", "MEDIUM", "HIGH", "CRITICAL");
     private static final Set<String> VALID_STATUSES = Set.of("OPEN", "INVESTIGATING", "RESOLVED");
+    private static final int DEPLOYMENT_CORRELATION_WINDOW_HOURS = 24;
+    private static final int MAX_CORRELATED_DEPLOYMENTS = 10;
 
     private final IncidentRepository incidentRepository;
+    private final DeploymentRepository deploymentRepository;
     private final ServiceRepository serviceRepository;
     private final ProjectAccessService projectAccessService;
     private final AiAnalysisService aiAnalysisService;
 
     public IncidentService(IncidentRepository incidentRepository,
+                            DeploymentRepository deploymentRepository,
                             ServiceRepository serviceRepository,
                             ProjectAccessService projectAccessService,
                             AiAnalysisService aiAnalysisService) {
         this.incidentRepository = incidentRepository;
+        this.deploymentRepository = deploymentRepository;
         this.serviceRepository = serviceRepository;
         this.projectAccessService = projectAccessService;
         this.aiAnalysisService = aiAnalysisService;
@@ -116,6 +126,29 @@ public class IncidentService {
             projectAccessService.requireAdminForUnscopedResource(authentication);
         }
         return incident;
+    }
+
+    public IncidentDeploymentCorrelationResponse correlateDeployments(
+            Long incidentId, Authentication authentication) {
+        Incident incident = getIncident(incidentId, authentication);
+        LocalDateTime incidentTime = incident.getStartedAt() != null
+                ? incident.getStartedAt()
+                : incident.getDetectedAt();
+        LocalDateTime windowStart = incidentTime.minusHours(DEPLOYMENT_CORRELATION_WINDOW_HOURS);
+
+        List<DeploymentResponse> deployments = incident.getProject() == null
+                ? List.of()
+                : deploymentRepository.findCorrelatedDeployments(
+                        incident.getProject().getId(),
+                        windowStart,
+                        incidentTime,
+                        PageRequest.of(0, MAX_CORRELATED_DEPLOYMENTS))
+                .stream()
+                .map(DeploymentResponse::from)
+                .toList();
+
+        return new IncidentDeploymentCorrelationResponse(
+                incident.getId(), incidentTime, windowStart, deployments);
     }
 
     /**

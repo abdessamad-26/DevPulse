@@ -285,6 +285,15 @@ Update incident status and analysis fields as the project owner, global `ADMIN`,
 
 Run the backend's incident-analysis flow as the project owner, global `ADMIN`, or a project member with the `DEVELOPER` role.
 
+### `GET /api/incidents/{id}/correlated-deployments`
+
+Return up to 10 deployments from the same project whose completion time (or
+start/recorded time when no completion time exists) falls within the 24 hours
+before the incident start time. If the incident has no start time, its detection
+time is used. The response includes the incident reference time, correlation
+window start, and matching deployment records. Access follows the incident's
+project permissions.
+
 ## Alert rules and alerts
 
 ### `POST /api/projects/{projectId}/alert-rules`
