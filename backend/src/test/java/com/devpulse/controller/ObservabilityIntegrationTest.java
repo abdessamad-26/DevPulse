@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -134,6 +135,60 @@ class ObservabilityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(ingestBody)))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void shouldWaitForTheWholeConfiguredWindowAndIgnoreInterruptedBreaches() throws Exception {
+        String token = registerAndLogin("obs-window-owner");
+        Long projectId = createProject(token);
+
+        for (String metricName : List.of("cpu_usage_percent", "memory_usage_percent")) {
+            Map<String, Object> ruleBody = Map.of(
+                    "name", metricName,
+                    "metric", metricName,
+                    "operator", ">",
+                    "threshold", 80.0,
+                    "duration", "5m",
+                    "severity", "high"
+            );
+            mockMvc.perform(post("/api/projects/" + projectId + "/alert-rules")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(ruleBody)))
+                    .andExpect(status().isCreated());
+        }
+
+        LocalDateTime start = LocalDateTime.now().minusMinutes(10).withNano(0);
+        List<Map<String, Object>> points = List.of(
+                timedPoint("cpu_usage_percent", 90.0, start),
+                timedPoint("cpu_usage_percent", 91.0, start.plusMinutes(5)),
+                timedPoint("memory_usage_percent", 90.0, start),
+                timedPoint("memory_usage_percent", 70.0, start.plusMinutes(2)),
+                timedPoint("memory_usage_percent", 91.0, start.plusMinutes(5))
+        );
+        mockMvc.perform(post("/api/projects/" + projectId + "/metrics")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("points", points))))
+                .andExpect(status().isCreated());
+
+        MvcResult alertsResult = mockMvc.perform(get("/api/alerts")
+                        .param("projectId", projectId.toString())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        Map<?, ?> alertPage = objectMapper.readValue(alertsResult.getResponse().getContentAsString(), Map.class);
+        List<?> alerts = (List<?>) alertPage.get("content");
+        assertThat(alerts).hasSize(1);
+        assertThat(((Map<?, ?>) alerts.get(0)).get("message")).asString().contains("cpu_usage_percent");
+    }
+
+    private Map<String, Object> timedPoint(String metricName, double value, LocalDateTime capturedAt) {
+        Map<String, Object> point = new HashMap<>();
+        point.put("metricName", metricName);
+        point.put("value", value);
+        point.put("capturedAt", capturedAt);
+        return point;
     }
 
     @Test

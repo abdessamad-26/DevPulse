@@ -5,6 +5,7 @@ import com.devpulse.entity.AlertRule;
 import com.devpulse.entity.Project;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.AlertRuleRepository;
+import com.devpulse.util.AlertDuration;
 import com.devpulse.util.PageRequestSupport;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
@@ -37,6 +38,7 @@ public class AlertRuleService {
         if (!VALID_SEVERITIES.contains(severity)) {
             throw new ApiException("severity must be one of " + VALID_SEVERITIES);
         }
+        AlertDuration.parse(request.getDuration());
 
         AlertRule rule = new AlertRule();
         rule.setProject(project);
@@ -44,7 +46,7 @@ public class AlertRuleService {
         rule.setMetric(request.getMetric());
         rule.setOperator(request.getOperator());
         rule.setThreshold(request.getThreshold());
-        rule.setDuration(request.getDuration());
+        rule.setDuration(request.getDuration() == null ? null : request.getDuration().trim());
         rule.setSeverity(severity);
         rule.setEnabled(request.getEnabled() == null || request.getEnabled());
 

@@ -201,7 +201,9 @@ the `X-API-Key` header.
 }
 ```
 
-`metricName` and `value` are required. Ingested points are evaluated against enabled alert rules immediately.
+`metricName` and `value` are required. Ingested points are evaluated against
+enabled alert rules. Rules without a `duration` are evaluated immediately;
+rules with a duration use the sample timestamps to require a sustained breach.
 
 ### `GET /api/projects/{projectId}/metrics`
 
@@ -313,7 +315,15 @@ List alerts for an accessible project. Accepts `page` and `size`.
 
 Acknowledge an alert as the project owner, global `ADMIN`, or a project member with the `DEVELOPER` role.
 
-**Known limitation:** rule `duration` is stored but not evaluated. A single breaching metric point can open an alert; a sliding-window evaluator is not implemented.
+Rule `duration` accepts a positive compact value (`500ms`, `30s`, `5m`,
+`2h`, `1d`) or an ISO-8601 duration (`PT5M`). For a timed rule, the latest
+sample and every observed sample in the preceding window must breach; at least
+one breaching sample at or before the window start is required. Any observed
+non-breaching sample interrupts the window. Missing samples are not synthesized
+or treated as failures. Rules without a duration retain immediate evaluation.
+
+**Known limitation:** alerts are not automatically resolved when a metric
+returns to a healthy value; acknowledgement remains a manual action.
 
 ## Deployments
 

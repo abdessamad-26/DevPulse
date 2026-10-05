@@ -81,4 +81,18 @@ class AlertRuleServiceTest {
         assertThatThrownBy(() -> alertRuleService.createRule(1L, authentication, request))
                 .isInstanceOf(ApiException.class);
     }
+
+    @Test
+    void shouldRejectInvalidDuration() {
+        Project project = new Project();
+        project.setId(1L);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
+
+        AlertRuleRequest request = validRequest();
+        request.setDuration("five minutes");
+
+        assertThatThrownBy(() -> alertRuleService.createRule(1L, authentication, request))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("duration");
+    }
 }

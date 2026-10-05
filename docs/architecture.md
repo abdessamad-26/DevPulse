@@ -233,7 +233,7 @@ The AI analysis pipeline is intentionally resilient and practical.
 ### Execution pattern
 1. collect metrics, logs and errors
 2. normalize event data
-3. apply deterministic rules for threshold breach detection
+3. apply deterministic threshold rules immediately or across a configured metric-time window
 4. compute statistical anomaly scores
 5. correlate with deployment timeline
 6. classify incident severity
@@ -242,6 +242,12 @@ The AI analysis pipeline is intentionally resilient and practical.
 
 ### Fallback strategy
 The system must keep working without external AI APIs. Deterministic heuristics and rule-based analysis remain the primary engine.
+
+Timed alert rules evaluate the persisted samples in the event-time window ending
+at the latest ingested point. Every observed sample in the window and a
+breaching sample at or before its start must satisfy the rule. No missing
+samples are inferred. Alerts are deduplicated while an alert for the rule is
+already open; automatic resolution is not implemented.
 
 ## 12. Risks and mitigations
 
