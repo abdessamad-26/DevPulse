@@ -3,11 +3,12 @@ package com.devpulse.service;
 import com.devpulse.dto.ProjectRequest;
 import com.devpulse.entity.Project;
 import com.devpulse.entity.User;
+import com.devpulse.exception.ApiException;
 import com.devpulse.repository.ProjectRepository;
 import com.devpulse.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.util.List;
 
 @Service
 public class ProjectService {
@@ -21,9 +22,9 @@ public class ProjectService {
     }
 
     public Project createProject(Long userId, ProjectRequest request) {
-        Optional<User> maybe = userRepository.findById(userId);
-        if (maybe.isEmpty()) throw new RuntimeException("User not found");
-        User owner = maybe.get();
+        User owner = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException("User not found"));
+
         Project project = new Project();
         project.setName(request.getName());
         project.setDescription(request.getDescription());
@@ -31,5 +32,14 @@ public class ProjectService {
         project.setEnvironment(request.getEnvironment());
         project.setOwner(owner);
         return projectRepository.save(project);
+    }
+
+    /**
+     * Named to match {@code ProjectController#listMine}. If you're looking for
+     * "findProjectsByUserId", that name was used in a previous revision of this
+     * file - keep this method name in sync with the controller and tests.
+     */
+    public List<Project> listProjectsForOwner(Long userId) {
+        return projectRepository.findByOwnerId(userId);
     }
 }

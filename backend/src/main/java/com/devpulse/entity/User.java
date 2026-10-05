@@ -1,5 +1,6 @@
 package com.devpulse.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 @Entity
@@ -65,6 +66,7 @@ public class User {
         this.email = email;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }

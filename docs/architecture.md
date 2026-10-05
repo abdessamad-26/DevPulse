@@ -333,3 +333,44 @@ The chosen stack is intentionally pragmatic and professional:
 - Kubernetes and ArgoCD for real-world production deployment patterns
 
 This combination keeps the product realistic, testable and demonstrable while staying aligned with the requirements of an open-source portfolio project.
+
+## 16. État réel du backend (mis à jour au fil du développement)
+
+Cette section reflète ce qui est **réellement implémenté et testé** dans `backend/`, pas ce qui est prévu — voir RÈGLE 1/2 du projet.
+
+### Fait et testé
+- Entités JPA `User`, `Role`, `Project` + migration Flyway `V1__init_schema.sql` (schéma complet pour incidents, deployments, alerts, metrics, logs, audit_logs — tables prêtes, entités/repos pas encore tous créés).
+- Authentification JWT bout-en-bout : `POST /api/auth/register`, `/login`, `/refresh`, `/logout` (voir `AuthController`, `AuthService`, `JwtService`).
+- Filtre `JwtAuthenticationFilter` + `CustomUserDetailsService` : les endpoints protégés vérifient réellement le token à chaque requête (pas seulement à la connexion).
+- RBAC fonctionnel : `POST /api/projects` exige `ADMIN` ou `DEVELOPER` via `@PreAuthorize`, testé par `AuthFlowIntegrationTest`.
+- `RoleSeeder` : garantit que les rôles ADMIN/DEVELOPER/VIEWER existent au démarrage, que Flyway soit activé ou non (utile en local où Flyway est désactivé par défaut).
+- Gestion d'erreurs centralisée via `GlobalExceptionHandler` + `ApiException` (au lieu de `RuntimeException` génériques).
+- Tests : `AuthServiceTest`, `ProjectServiceTest`, `JwtServiceTest` (unitaires) + `AuthFlowIntegrationTest` (register → login → création de projet avec le token réel, et cas d'échec : pas de token, mauvais mot de passe).
+
+### Limitations connues (volontairement non cachées)
+- **Pas de rotation/blacklist de refresh token** : `/api/auth/refresh` renvoie le même refresh token tant qu'il est valide. Un vol de refresh token reste donc valable jusqu'à expiration. À traiter en Phase 12 (sécurité) si le projet va en production réelle.
+- **`/api/auth/logout` est un no-op côté serveur** (JWT stateless) : il ne fait qu'exister comme point d'entrée pour les clients ; aucun token n'est invalidé côté serveur.
+- **Pas d'endpoint `/api/users`** pour la gestion des comptes par un ADMIN (prévu en Phase 2/3 suite, pas encore fait).
+- **Register attribue toujours le rôle DEVELOPER** : il n'y a pas encore de mécanisme pour créer un compte ADMIN autrement qu'en modifiant la base manuellement (à faire : un seed `.env`-driven pour le premier admin, ou un endpoint réservé).
+- **Flyway désactivé par défaut** en local (`SPRING_FLYWAY_ENABLED=false`, `ddl-auto=update`) : pratique pour itérer vite, mais `V1__init_schema.sql`/`V2__seed_roles.sql` ne sont réellement exercées qu'avec `SPRING_FLYWAY_ENABLED=true` (à valider avant tout déploiement).
+### Frontend (Angular) — build réellement vérifié
+Comme pour le service AI, `npm install && ng build` a été **réellement exécuté** dans le bac à sable (npm a accès à npmjs.org) : **build de production propre, 1.08 MB, aucune erreur ni warning de budget**.
+
+- Stack réelle : Angular 19 (standalone components, signals), PrimeNG 19 (Aura theme), Reactive Forms, RxJS — conforme à la stack demandée.
+- ✅ Auth complète : `AuthService` (login/register/logout, session dans `localStorage`), `authInterceptor` (attache le JWT, déconnecte sur 401), `authGuard` (protège les routes)
+- ✅ Layout : sidebar + navigation vers les 7 sections prévues par la spec, responsive (sidebar horizontale en dessous de 768px)
+- ✅ Pages réelles branchées sur le backend : Login (formulaire réactif, validation), Dashboard (liste/création de projets via `/api/projects`), Incidents (liste + changement de statut via `/api/incidents`)
+- ⚠️ Pages Logs/Metrics/Deployments/Alerts/Settings : **placeholders honnêtes** ("pas encore construit"), pas de fausses données — le backend a déjà les API correspondantes (voir docs/api.md), il manque juste les composants Angular
+- ❌ **Aucun test unitaire/composant Angular écrit** (`ng test` non lancé — pas de fichiers `.spec.ts`). C'est un vrai manque par rapport à l'objectif "frontend coverage > 70%".
+- ❌ Charts (Chart.js, installé mais pas utilisé), dark mode, breadcrumbs, notifications : pas encore faits
+- Anciens fichiers HTML/JS statiques déplacés dans `frontend/legacy-static-prototype/` (non utilisés par le build Angular, gardés pour référence uniquement)
+
+### AI Service (Python/FastAPI) — build/tests réellement vérifiés
+Comme pour le frontend, contrairement au backend Java (jamais compilé/testé dans cet environnement faute d'accès à Maven Central), le service AI Python a été **réellement installé et testé** (pip a accès à PyPI) : `pip install -r requirements.txt -r requirements-dev.txt && pytest` → **16/16 tests passent**.
+
+- `IncidentAnalyzer` : classification par règles déterministes (mots-clés database/memory/latency), confiance croissante avec le nombre de signaux, fallback `GENERAL` si rien ne matche. Ce n'est PAS un placeholder — vraie logique, teste chaque branche.
+- `z_score_anomaly` (couche "stats", `POST /api/analysis/anomalies`) : détection d'anomalie par z-score contre un historique, gère les cas limites (historique trop court, variance nulle).
+- **Contrat JSON vérifié avec le côté Java** : `IncidentAnalysisResponse.java` désérialise par nom de champ exact (`classification`, `confidence`, `rootCause`, `recommendations`, `signals`) — les modèles Pydantic utilisent `serialization_alias` pour produire exactement ce JSON camelCase, et un test HTTP (`test_api.py`) vérifie les clés exactes de la réponse.
+- Couche LLM optionnelle (troisième niveau prévu par la spec) : ❌ pas encore implémentée — le service fonctionne entièrement sans clé API externe, conformément à l'exigence "doit continuer à fonctionner sans API externe".
+- ❌ Pas de tests d'intégration Java↔Python réels (le Java appelle `http://localhost:8000`, jamais lancé en même temps que le service Python dans cet environnement) — seul le contrat JSON est vérifié côté Python.
+

@@ -3,6 +3,7 @@ package com.devpulse.service;
 import com.devpulse.dto.ProjectRequest;
 import com.devpulse.entity.Project;
 import com.devpulse.entity.User;
+import com.devpulse.exception.ApiException;
 import com.devpulse.repository.ProjectRepository;
 import com.devpulse.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -11,9 +12,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -49,5 +52,30 @@ class ProjectServiceTest {
         assertThat(project.getName()).isEqualTo("billing-service");
         assertThat(project.getOwner().getId()).isEqualTo(10L);
         assertThat(project.getEnvironment()).isEqualTo("development");
+    }
+
+    @Test
+    void shouldRejectProjectCreationWhenOwnerDoesNotExist() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        ProjectRequest request = new ProjectRequest();
+        request.setName("orphan-service");
+        request.setEnvironment("development");
+
+        assertThatThrownBy(() -> projectService.createProject(99L, request))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void shouldListProjectsOwnedByUser() {
+        Project project = new Project();
+        project.setName("billing-service");
+
+        when(projectRepository.findByOwnerId(10L)).thenReturn(List.of(project));
+
+        List<Project> projects = projectService.listProjectsForOwner(10L);
+
+        assertThat(projects).hasSize(1);
+        assertThat(projects.get(0).getName()).isEqualTo("billing-service");
     }
 }

@@ -1,13 +1,13 @@
-version: '3.8'
 services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_DB: devpulse
-      POSTGRES_USER: devpulse
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-devpulse}
+      POSTGRES_USER: ${DB_USERNAME:-devpulse}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required - copy .env.example to .env (or run scripts/dev.ps1)}
     ports:
-      - "5432:5432"
+      # Bound to localhost only: the database must not be reachable from the network.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -16,10 +16,19 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/devpulse
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:devpulse}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-devpulse}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-devpulse}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required - copy .env.example to .env (or run scripts/dev.ps1)}
+      SPRING_DATASOURCE_DRIVER: org.postgresql.Driver
+      SPRING_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
       SPRING_FLYWAY_ENABLED: "true"
+      AI_SERVICE_URL: http://ai-service:8000
+      # Demo mode creates a known account (demo@devpulse.local). Off unless explicitly enabled in .env.
+      DEMO_MODE: ${DEMO_MODE:-false}
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:4200
+      # No default on purpose: the backend refuses to start without a strong secret.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - copy .env.example to .env (or run scripts/dev.ps1)}
     ports:
       - "8080:8080"
     depends_on:
@@ -30,7 +39,8 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      # Only the backend needs the AI service (over the compose network); keep the host port local.
+      - "127.0.0.1:8000:8000"
 
   frontend:
     build:
