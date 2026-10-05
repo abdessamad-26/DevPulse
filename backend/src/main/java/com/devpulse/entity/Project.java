@@ -1,5 +1,6 @@
 package com.devpulse.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 @Entity
@@ -97,6 +98,7 @@ public class Project {
         this.status = status;
     }
 
+    @JsonIgnore
     public User getOwner() {
         return owner;
     }
