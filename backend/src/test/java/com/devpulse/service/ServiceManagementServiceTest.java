@@ -39,7 +39,7 @@ class ServiceManagementServiceTest {
         Project project = new Project();
         project.setId(1L);
 
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(serviceRepository.save(any(ServiceEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ServiceRequest request = new ServiceRequest();
@@ -55,7 +55,7 @@ class ServiceManagementServiceTest {
 
     @Test
     void shouldRejectServiceCreationWhenUserHasNoAccess() {
-        when(projectAccessService.requireAccessibleProject(1L, authentication))
+        when(projectAccessService.requireWritableProject(1L, authentication))
                 .thenThrow(new AccessDeniedException("no access"));
 
         ServiceRequest request = new ServiceRequest();

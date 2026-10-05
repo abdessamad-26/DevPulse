@@ -67,13 +67,13 @@ class ProjectServiceTest {
     }
 
     @Test
-    void shouldListProjectsOwnedByUser() {
+    void shouldListProjectsAccessibleToUser() {
         Project project = new Project();
         project.setName("billing-service");
 
-        when(projectRepository.findByOwnerId(10L)).thenReturn(List.of(project));
+        when(projectRepository.findAccessibleByUserId(10L)).thenReturn(List.of(project));
 
-        List<Project> projects = projectService.listProjectsForOwner(10L);
+        List<Project> projects = projectService.listProjectsAccessibleToUser(10L);
 
         assertThat(projects).hasSize(1);
         assertThat(projects.get(0).getName()).isEqualTo("billing-service");

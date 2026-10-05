@@ -34,12 +34,7 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
-    /**
-     * Named to match {@code ProjectController#listMine}. If you're looking for
-     * "findProjectsByUserId", that name was used in a previous revision of this
-     * file - keep this method name in sync with the controller and tests.
-     */
-    public List<Project> listProjectsForOwner(Long userId) {
-        return projectRepository.findByOwnerId(userId);
+    public List<Project> listProjectsAccessibleToUser(Long userId) {
+        return projectRepository.findAccessibleByUserId(userId);
     }
 }

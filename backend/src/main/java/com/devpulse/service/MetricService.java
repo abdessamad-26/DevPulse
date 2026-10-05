@@ -30,7 +30,7 @@ public class MetricService {
      * each one as it is ingested (see {@link AlertEvaluationService}).
      */
     public List<Metric> ingest(Long projectId, Authentication authentication, MetricIngestRequest request) {
-        Project project = projectAccessService.requireAccessibleProject(projectId, authentication);
+        Project project = projectAccessService.requireIngestionProject(projectId, authentication);
 
         return request.getPoints().stream().map(point -> {
             Metric metric = new Metric();

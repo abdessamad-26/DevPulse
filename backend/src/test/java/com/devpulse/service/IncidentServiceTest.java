@@ -51,7 +51,7 @@ class IncidentServiceTest {
         Project project = new Project();
         project.setId(1L);
 
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(incidentRepository.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         IncidentCreateRequest request = new IncidentCreateRequest();
@@ -70,7 +70,7 @@ class IncidentServiceTest {
     void shouldRejectInvalidSeverity() {
         Project project = new Project();
         project.setId(1L);
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
 
         IncidentCreateRequest request = new IncidentCreateRequest();
         request.setProjectId(1L);
@@ -83,7 +83,7 @@ class IncidentServiceTest {
 
     @Test
     void shouldRejectIncidentCreationOnInaccessibleProject() {
-        when(projectAccessService.requireAccessibleProject(1L, authentication))
+        when(projectAccessService.requireWritableProject(1L, authentication))
                 .thenThrow(new AccessDeniedException("no access"));
 
         IncidentCreateRequest request = new IncidentCreateRequest();
@@ -104,7 +104,7 @@ class IncidentServiceTest {
         service.setName("billing-api");
         service.setProject(project);
 
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(serviceRepository.findById(5L)).thenReturn(Optional.of(service));
         when(incidentRepository.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -130,7 +130,7 @@ class IncidentServiceTest {
         incident.setStatus("INVESTIGATING");
 
         when(incidentRepository.findById(10L)).thenReturn(Optional.of(incident));
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(incidentRepository.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         IncidentUpdateRequest request = new IncidentUpdateRequest();
@@ -153,7 +153,7 @@ class IncidentServiceTest {
         incident.setProject(project);
 
         when(incidentRepository.findById(10L)).thenReturn(Optional.of(incident));
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
 
         IncidentUpdateRequest request = new IncidentUpdateRequest();
         request.setStatus("CLOSED");
@@ -194,6 +194,7 @@ class IncidentServiceTest {
 
         when(incidentRepository.findById(10L)).thenReturn(Optional.of(incident));
         when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(aiAnalysisService.analyzeIncident(any())).thenReturn(new IncidentAnalysisResponse(
                 "DATABASE",
                 0.87,

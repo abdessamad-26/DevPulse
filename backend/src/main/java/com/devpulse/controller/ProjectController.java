@@ -45,7 +45,7 @@ public class ProjectController {
     @GetMapping
     public ResponseEntity<List<Project>> listMine(Authentication authentication) {
         Long userId = projectAccessService.resolveCurrentUser(authentication).getId();
-        return ResponseEntity.ok(projectService.listProjectsForOwner(userId));
+        return ResponseEntity.ok(projectService.listProjectsAccessibleToUser(userId));
     }
 
     @GetMapping("/{id}")

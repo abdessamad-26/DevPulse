@@ -40,7 +40,7 @@ public class IncidentService {
     }
 
     public Incident createIncident(Authentication authentication, IncidentCreateRequest request) {
-        Project project = projectAccessService.requireAccessibleProject(request.getProjectId(), authentication);
+        Project project = projectAccessService.requireWritableProject(request.getProjectId(), authentication);
 
         String severity = request.getSeverity().toUpperCase();
         if (!VALID_SEVERITIES.contains(severity)) {
@@ -77,7 +77,7 @@ public class IncidentService {
                 .orElseThrow(() -> new ApiException("Incident not found"));
 
         if (incident.getProject() != null) {
-            projectAccessService.requireAccessibleProject(incident.getProject().getId(), authentication);
+            projectAccessService.requireWritableProject(incident.getProject().getId(), authentication);
         } else {
             projectAccessService.requireAdminForUnscopedResource(authentication);
         }
@@ -122,6 +122,11 @@ public class IncidentService {
      */
     public Incident analyzeIncident(Long incidentId, Authentication authentication) {
         Incident incident = getIncident(incidentId, authentication);
+        if (incident.getProject() != null) {
+            projectAccessService.requireWritableProject(incident.getProject().getId(), authentication);
+        } else {
+            projectAccessService.requireAdminForUnscopedResource(authentication);
+        }
         String description = incident.getDescription() == null || incident.getDescription().isBlank()
                 ? incident.getTitle()
                 : incident.getDescription();

@@ -40,7 +40,7 @@ class DeploymentServiceTest {
         Project project = new Project();
         project.setId(1L);
 
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(authentication.getName()).thenReturn("alice@example.com");
         when(deploymentRepository.save(any(Deployment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -61,7 +61,7 @@ class DeploymentServiceTest {
     void shouldRejectInvalidDeploymentStatus() {
         Project project = new Project();
         project.setId(1L);
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
 
         DeploymentRequest request = new DeploymentRequest();
         request.setProjectId(1L);
@@ -75,7 +75,7 @@ class DeploymentServiceTest {
 
     @Test
     void shouldRejectDeploymentOnInaccessibleProject() {
-        when(projectAccessService.requireAccessibleProject(1L, authentication))
+        when(projectAccessService.requireWritableProject(1L, authentication))
                 .thenThrow(new AccessDeniedException("no access"));
 
         DeploymentRequest request = new DeploymentRequest();

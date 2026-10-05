@@ -339,17 +339,22 @@ This combination keeps the product realistic, testable and demonstrable while st
 Cette section reflète ce qui est **réellement implémenté et testé** dans `backend/`, pas ce qui est prévu — voir RÈGLE 1/2 du projet.
 
 ### Fait et testé
-- Entités JPA `User`, `Role`, `Project` + migration Flyway `V1__init_schema.sql` (schéma complet pour incidents, deployments, alerts, metrics, logs, audit_logs — tables prêtes, entités/repos pas encore tous créés).
+- Entités JPA pour l'authentification, projets, membres, clés d'ingestion, refresh tokens, audit logs et ressources d'observabilité, avec migrations Flyway V1–V9.
 - Authentification JWT bout-en-bout : `POST /api/auth/register`, `/login`, `/refresh`, `/logout` (voir `AuthController`, `AuthService`, `JwtService`).
+- Les refresh tokens sont rotatifs et à usage unique ; leur empreinte est stockée en base. Le rejeu révoque la famille de session ; la déconnexion révoque les refresh tokens de la famille.
+- Journaux d'audit paginés pour connexions, rotation/réutilisation/déconnexion, membres de projet et clés d'ingestion. Les secrets ne sont pas enregistrés.
+- L'accès aux journaux d'un projet est réservé au propriétaire et aux ADMIN globaux ; la liste globale est réservée aux ADMIN.
+- Les clés d'ingestion sont limitées aux routes d'ingestion de métriques et de logs pour leur projet.
+- Les membres de projet ont des rôles DEVELOPER/VIEWER et un contrôle d'accès projet centralisé.
 - Filtre `JwtAuthenticationFilter` + `CustomUserDetailsService` : les endpoints protégés vérifient réellement le token à chaque requête (pas seulement à la connexion).
 - RBAC fonctionnel : `POST /api/projects` exige `ADMIN` ou `DEVELOPER` via `@PreAuthorize`, testé par `AuthFlowIntegrationTest`.
 - `RoleSeeder` : garantit que les rôles ADMIN/DEVELOPER/VIEWER existent au démarrage, que Flyway soit activé ou non (utile en local où Flyway est désactivé par défaut).
 - Gestion d'erreurs centralisée via `GlobalExceptionHandler` + `ApiException` (au lieu de `RuntimeException` génériques).
-- Tests : `AuthServiceTest`, `ProjectServiceTest`, `JwtServiceTest` (unitaires) + `AuthFlowIntegrationTest` (register → login → création de projet avec le token réel, et cas d'échec : pas de token, mauvais mot de passe).
+- Tests : tests backend unitaires et d'intégration incluant `AuditLogIntegrationTest` et `AuthFlowIntegrationTest`. La suite a été vérifiée avec H2 et PostgreSQL 15/Flyway.
 
 ### Limitations connues (volontairement non cachées)
-- **Pas de rotation/blacklist de refresh token** : `/api/auth/refresh` renvoie le même refresh token tant qu'il est valide. Un vol de refresh token reste donc valable jusqu'à expiration. À traiter en Phase 12 (sécurité) si le projet va en production réelle.
-- **`/api/auth/logout` est un no-op côté serveur** (JWT stateless) : il ne fait qu'exister comme point d'entrée pour les clients ; aucun token n'est invalidé côté serveur.
+- **Révocation des refresh tokens uniquement** : chaque refresh token est à usage unique et stocké sous forme d'empreinte ; une réutilisation révoque la famille de session. La déconnexion révoque cette famille lorsqu'elle reçoit le refresh token. Les access tokens déjà émis restent valides jusqu'à expiration.
+- **Consultation des journaux d'audit uniquement par API** : il n'existe pas encore d'écran Angular dédié.
 - **Pas d'endpoint `/api/users`** pour la gestion des comptes par un ADMIN (prévu en Phase 2/3 suite, pas encore fait).
 - **Register attribue toujours le rôle DEVELOPER** : il n'y a pas encore de mécanisme pour créer un compte ADMIN autrement qu'en modifiant la base manuellement (à faire : un seed `.env`-driven pour le premier admin, ou un endpoint réservé).
 - **Flyway désactivé par défaut** en local (`SPRING_FLYWAY_ENABLED=false`, `ddl-auto=update`) : pratique pour itérer vite, mais `V1__init_schema.sql`/`V2__seed_roles.sql` ne sont réellement exercées qu'avec `SPRING_FLYWAY_ENABLED=true` (à valider avant tout déploiement).
@@ -373,4 +378,3 @@ Comme pour le frontend, contrairement au backend Java (jamais compilé/testé da
 - **Contrat JSON vérifié avec le côté Java** : `IncidentAnalysisResponse.java` désérialise par nom de champ exact (`classification`, `confidence`, `rootCause`, `recommendations`, `signals`) — les modèles Pydantic utilisent `serialization_alias` pour produire exactement ce JSON camelCase, et un test HTTP (`test_api.py`) vérifie les clés exactes de la réponse.
 - Couche LLM optionnelle (troisième niveau prévu par la spec) : ❌ pas encore implémentée — le service fonctionne entièrement sans clé API externe, conformément à l'exigence "doit continuer à fonctionner sans API externe".
 - ❌ Pas de tests d'intégration Java↔Python réels (le Java appelle `http://localhost:8000`, jamais lancé en même temps que le service Python dans cet environnement) — seul le contrat JSON est vérifié côté Python.
-

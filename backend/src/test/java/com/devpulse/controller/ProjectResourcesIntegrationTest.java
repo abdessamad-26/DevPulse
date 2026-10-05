@@ -5,6 +5,7 @@ import com.devpulse.entity.User;
 import com.devpulse.repository.RoleRepository;
 import com.devpulse.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -50,7 +52,10 @@ class ProjectResourcesIntegrationTest {
 
     private String registerAndLogin(String emailPrefix) throws Exception {
         String email = emailPrefix + "-" + UUID.randomUUID() + "@example.com";
+        return registerAndLoginEmail(email);
+    }
 
+    private String registerAndLoginEmail(String email) throws Exception {
         Map<String, String> registerBody = Map.of(
                 "firstName", "Integration",
                 "lastName", "Tester",
@@ -181,6 +186,159 @@ class ProjectResourcesIntegrationTest {
         mockMvc.perform(get("/api/incidents").param("projectId", projectId.toString())
                         .header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldEnforceRolesIndependentlyForEachProjectMember() throws Exception {
+        String ownerToken = registerAndLogin("membership-owner");
+        Long viewerProjectId = createProject(ownerToken, "viewer-project");
+        Long developerProjectId = createProject(ownerToken, "developer-project");
+        String memberEmail = "project-member-" + UUID.randomUUID() + "@example.com";
+        String memberToken = registerAndLoginEmail(memberEmail);
+        Long memberId = userRepository.findByEmail(memberEmail).orElseThrow().getId();
+
+        mockMvc.perform(post("/api/projects/" + viewerProjectId + "/members")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", memberEmail, "role", "VIEWER"))))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/projects/" + developerProjectId + "/members")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", memberEmail, "role", "DEVELOPER"))))
+                .andExpect(status().isCreated());
+
+        MvcResult projectsResult = mockMvc.perform(get("/api/projects")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<Map<String, Object>> projects = objectMapper.readValue(
+                projectsResult.getResponse().getContentAsString(), new TypeReference<>() {});
+        assertThat(projects).extracting(project -> project.get("id").toString())
+                .containsExactlyInAnyOrder(viewerProjectId.toString(), developerProjectId.toString());
+
+        MvcResult membersResult = mockMvc.perform(get("/api/projects/" + viewerProjectId + "/members")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        List<Map<String, Object>> members = objectMapper.readValue(
+                membersResult.getResponse().getContentAsString(), new TypeReference<>() {});
+        assertThat(members).anySatisfy(member -> {
+            assertThat(member.get("userId").toString()).isEqualTo(memberId.toString());
+            assertThat(member.get("role")).isEqualTo("VIEWER");
+        });
+
+        mockMvc.perform(get("/api/projects/" + viewerProjectId + "/services")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/projects/" + viewerProjectId + "/services")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "read-only-service"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/projects/" + developerProjectId + "/services")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "developer-service"))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(put("/api/projects/" + developerProjectId + "/members/" + memberId)
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("role", "VIEWER"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/projects/" + developerProjectId + "/members/" + memberId)
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("role", "VIEWER"))))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/projects/" + developerProjectId + "/services")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "no-longer-writable"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/api/projects/" + developerProjectId + "/members/" + memberId)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/projects/" + developerProjectId + "/services")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldRestrictIngestionApiKeysToTheirProjectAndIngestionEndpoints() throws Exception {
+        String ownerToken = registerAndLogin("ingestion-key-owner");
+        Long projectId = createProject(ownerToken, "key-protected-project");
+        Long otherProjectId = createProject(ownerToken, "other-key-protected-project");
+
+        MvcResult createdResult = mockMvc.perform(post("/api/projects/" + projectId + "/ingestion-keys")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("name", "production collector"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Map<?, ?> createdKey = objectMapper.readValue(createdResult.getResponse().getContentAsString(), Map.class);
+        String apiKey = (String) createdKey.get("key");
+        Long keyId = Long.valueOf(createdKey.get("id").toString());
+        assertThat(apiKey).startsWith("dp_ing_");
+
+        MvcResult listedResult = mockMvc.perform(get("/api/projects/" + projectId + "/ingestion-keys")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(listedResult.getResponse().getContentAsString())
+                .contains("production collector", createdKey.get("prefix").toString())
+                .doesNotContain(apiKey, "keyHash");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/metrics")
+                        .header("X-API-Key", apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"points":[{"serviceName":"checkout","metricName":"cpu","value":72.5}]}
+                                """))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/projects/" + projectId + "/logs")
+                        .header("X-API-Key", apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"entries":[{"serviceName":"checkout","level":"INFO","message":"ingestion ok"}]}
+                                """))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/projects/" + otherProjectId + "/metrics")
+                        .header("X-API-Key", apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"points":[{"metricName":"cpu","value":72.5}]}
+                                """))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/projects/" + projectId + "/metrics")
+                        .header("X-API-Key", apiKey))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/projects/" + projectId + "/services")
+                        .header("X-API-Key", apiKey))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/projects/" + projectId + "/metrics")
+                        .header("X-API-Key", "dp_ing_invalid")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"points":[{"metricName":"cpu","value":72.5}]}
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete("/api/projects/" + projectId + "/ingestion-keys/" + keyId)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/projects/" + projectId + "/logs")
+                        .header("X-API-Key", apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"entries":[{"message":"revoked key"}]}
+                                """))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

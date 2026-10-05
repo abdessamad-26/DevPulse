@@ -46,7 +46,7 @@ class AlertRuleServiceTest {
     void shouldCreateRuleWithNormalizedSeverityAndDefaultEnabledTrue() {
         Project project = new Project();
         project.setId(1L);
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(alertRuleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AlertRule rule = alertRuleService.createRule(1L, authentication, validRequest());
@@ -60,7 +60,7 @@ class AlertRuleServiceTest {
     void shouldRejectInvalidOperator() {
         Project project = new Project();
         project.setId(1L);
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
 
         AlertRuleRequest request = validRequest();
         request.setOperator("~=");
@@ -73,7 +73,7 @@ class AlertRuleServiceTest {
     void shouldRejectInvalidSeverity() {
         Project project = new Project();
         project.setId(1L);
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
 
         AlertRuleRequest request = validRequest();
         request.setSeverity("URGENT");

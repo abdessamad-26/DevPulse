@@ -114,4 +114,72 @@ class AuthFlowIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginBody)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void shouldRotateRefreshTokenAndRevokeItsFamilyWhenAnOldTokenIsReused() throws Exception {
+        String email = "rotation-" + UUID.randomUUID() + "@example.com";
+        registerAndLogin(email);
+        String initialRefreshToken = login(email);
+
+        MvcResult refreshResult = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", initialRefreshToken))))
+                .andExpect(status().isOk())
+                .andReturn();
+        Map<?, ?> refreshResponse = objectMapper.readValue(
+                refreshResult.getResponse().getContentAsString(), Map.class);
+        String rotatedRefreshToken = (String) refreshResponse.get("refreshToken");
+        assertThat(rotatedRefreshToken).isNotBlank().isNotEqualTo(initialRefreshToken);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", initialRefreshToken))))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", rotatedRefreshToken))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRevokeRefreshTokenFamilyOnLogout() throws Exception {
+        String email = "logout-" + UUID.randomUUID() + "@example.com";
+        registerAndLogin(email);
+        String refreshToken = login(email);
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken))))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken))))
+                .andExpect(status().isBadRequest());
+    }
+
+    private void registerAndLogin(String email) throws Exception {
+        Map<String, String> registerBody = Map.of(
+                "firstName", "Integration",
+                "lastName", "Tester",
+                "email", email,
+                "password", "supersecret123"
+        );
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerBody)))
+                .andExpect(status().isCreated());
+    }
+
+    private String login(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("email", email, "password", "supersecret123"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        Map<?, ?> response = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
+        return (String) response.get("refreshToken");
+    }
 }

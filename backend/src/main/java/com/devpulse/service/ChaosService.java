@@ -60,7 +60,7 @@ public class ChaosService {
     }
 
     public ChaosSimulation trigger(Long projectId, Authentication authentication, ChaosRequest request) {
-        Project project = projectAccessService.requireAccessibleProject(projectId, authentication);
+        Project project = projectAccessService.requireWritableProject(projectId, authentication);
 
         String action = request.getAction().toUpperCase();
         if (!SEVERITY_BY_ACTION.containsKey(action)) {

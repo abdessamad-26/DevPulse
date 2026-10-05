@@ -7,7 +7,6 @@ import com.devpulse.service.IncidentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,7 +28,6 @@ public class IncidentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','DEVELOPER')")
     public ResponseEntity<Incident> create(@Valid @RequestBody IncidentCreateRequest request, Authentication authentication) {
         Incident incident = incidentService.createIncident(authentication, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(incident);
@@ -46,13 +44,11 @@ public class IncidentController {
     }
 
     @PostMapping("/{id}/analyze")
-    @PreAuthorize("hasAnyRole('ADMIN','DEVELOPER')")
     public ResponseEntity<Incident> analyze(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(incidentService.analyzeIncident(id, authentication));
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','DEVELOPER')")
     public ResponseEntity<Incident> update(@PathVariable Long id,
                                             @Valid @RequestBody IncidentUpdateRequest request,
                                             Authentication authentication) {

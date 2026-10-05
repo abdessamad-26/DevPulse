@@ -3,7 +3,6 @@ package com.devpulse.controller;
 import com.devpulse.entity.Alert;
 import com.devpulse.service.AlertService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,7 +24,6 @@ public class AlertController {
     }
 
     @PostMapping("/{id}/ack")
-    @PreAuthorize("hasAnyRole('ADMIN','DEVELOPER')")
     public ResponseEntity<Alert> acknowledge(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(alertService.acknowledge(id, authentication));
     }

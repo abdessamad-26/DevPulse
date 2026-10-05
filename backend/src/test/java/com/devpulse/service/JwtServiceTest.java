@@ -45,6 +45,15 @@ class JwtServiceTest {
         assertThat(jwtService.isTokenValid(refreshToken)).isTrue();
         assertThat(jwtService.isRefreshTokenValid(refreshToken)).isTrue();
         assertThat(jwtService.extractUsername(refreshToken)).isEqualTo("bob@example.com");
+        assertThat(jwtService.extractExpiration(refreshToken)).isAfter(new Date());
+    }
+
+    @Test
+    void shouldGenerateUniqueRefreshTokensForTheSameUser() {
+        String first = jwtService.generateRefreshToken("bob@example.com");
+        String second = jwtService.generateRefreshToken("bob@example.com");
+
+        assertThat(second).isNotEqualTo(first);
     }
 
     @Test

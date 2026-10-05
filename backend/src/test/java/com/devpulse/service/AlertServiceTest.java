@@ -48,7 +48,7 @@ class AlertServiceTest {
         alert.setStatus("OPEN");
 
         when(alertRepository.findById(5L)).thenReturn(Optional.of(alert));
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(alertRepository.save(any(Alert.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Alert acknowledged = alertService.acknowledge(5L, authentication);

@@ -27,7 +27,7 @@ public class LogService {
     }
 
     public List<LogEntry> ingest(Long projectId, Authentication authentication, LogIngestRequest request) {
-        Project project = projectAccessService.requireAccessibleProject(projectId, authentication);
+        Project project = projectAccessService.requireIngestionProject(projectId, authentication);
 
         return request.getEntries().stream().map(entry -> {
             LogEntry log = new LogEntry();

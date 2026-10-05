@@ -26,7 +26,7 @@ public class AlertRuleService {
     }
 
     public AlertRule createRule(Long projectId, Authentication authentication, AlertRuleRequest request) {
-        Project project = projectAccessService.requireAccessibleProject(projectId, authentication);
+        Project project = projectAccessService.requireWritableProject(projectId, authentication);
 
         if (!VALID_OPERATORS.contains(request.getOperator())) {
             throw new ApiException("operator must be one of " + VALID_OPERATORS);

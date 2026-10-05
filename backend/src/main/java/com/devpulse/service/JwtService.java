@@ -42,6 +42,7 @@ public class JwtService {
     public String generateRefreshToken(String email) {
         return Jwts.builder()
                 .subject(email)
+                .id(java.util.UUID.randomUUID().toString())
                 .claim(CLAIM_TYPE, TYPE_REFRESH)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtProperties.getRefreshExpiration()))
@@ -55,6 +56,10 @@ public class JwtService {
 
     public String extractRole(String token) {
         return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
     }
 
     /**

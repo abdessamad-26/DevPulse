@@ -25,7 +25,7 @@ public class DeploymentService {
     }
 
     public Deployment recordDeployment(Authentication authentication, DeploymentRequest request) {
-        Project project = projectAccessService.requireAccessibleProject(request.getProjectId(), authentication);
+        Project project = projectAccessService.requireWritableProject(request.getProjectId(), authentication);
 
         String status = request.getStatus().toUpperCase();
         if (!VALID_STATUSES.contains(status)) {

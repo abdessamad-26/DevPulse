@@ -32,7 +32,7 @@ public class AlertService {
                 ? alert.getAlertRule().getProject().getId()
                 : null;
         if (projectId != null) {
-            projectAccessService.requireAccessibleProject(projectId, authentication);
+            projectAccessService.requireWritableProject(projectId, authentication);
         } else {
             projectAccessService.requireAdminForUnscopedResource(authentication);
         }

@@ -1,6 +1,7 @@
 package com.devpulse.config;
 
 import com.devpulse.security.JwtAuthenticationFilter;
+import com.devpulse.security.IngestionApiKeyAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -30,12 +32,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final IngestionApiKeyAuthenticationFilter ingestionApiKeyAuthenticationFilter;
 
     @Value("${devpulse.cors.allowed-origins:http://localhost:4200,http://localhost:3000,http://localhost:49337,http://127.0.0.1:49337}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          IngestionApiKeyAuthenticationFilter ingestionApiKeyAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.ingestionApiKeyAuthenticationFilter = ingestionApiKeyAuthenticationFilter;
     }
 
     @Bean
@@ -63,7 +68,8 @@ public class SecurityConfig {
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied"))
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(ingestionApiKeyAuthenticationFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -76,7 +82,7 @@ public class SecurityConfig {
                 .filter(origin -> !origin.isBlank())
                 .toList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-API-Key"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -86,6 +92,14 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public FilterRegistrationBean<IngestionApiKeyAuthenticationFilter> disableApiKeyFilterServletRegistration() {
+        FilterRegistrationBean<IngestionApiKeyAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(ingestionApiKeyAuthenticationFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

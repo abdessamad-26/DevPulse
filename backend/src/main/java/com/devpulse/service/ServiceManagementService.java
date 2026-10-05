@@ -21,7 +21,7 @@ public class ServiceManagementService {
     }
 
     public ServiceEntity createService(Long projectId, Authentication authentication, ServiceRequest request) {
-        Project project = projectAccessService.requireAccessibleProject(projectId, authentication);
+        Project project = projectAccessService.requireWritableProject(projectId, authentication);
 
         ServiceEntity service = new ServiceEntity();
         service.setProject(project);

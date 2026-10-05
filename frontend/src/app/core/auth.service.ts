@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, of, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthResponse, RegisterPayload, User } from './models';
 
 const STORAGE_KEY = 'devpulse.session';
@@ -27,6 +27,7 @@ export class AuthService {
   private readonly router = inject(Router);
 
   private readonly session = signal<Session | null>(readSession());
+  private refreshRequest: Observable<AuthResponse> | null = null;
 
   readonly user = computed(() => this.session()?.user ?? null);
   readonly isAuthenticated = computed(() => this.session() !== null);
@@ -40,19 +41,29 @@ export class AuthService {
   }
 
   refreshToken(): Observable<AuthResponse> {
+    if (this.refreshRequest) {
+      return this.refreshRequest;
+    }
+
     const refreshToken = this.session()?.refreshToken;
     if (!refreshToken) {
       this.logout();
       return throwError(() => new Error('No refresh token available'));
     }
 
-    return this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
+    const request = this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
       tap((res) => this.store(res)),
       catchError((error) => {
         this.logout();
         return throwError(() => error);
-      })
+      }),
+      finalize(() => {
+        this.refreshRequest = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: false })
     );
+    this.refreshRequest = request;
+    return request;
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
@@ -71,11 +82,17 @@ export class AuthService {
   }
 
   logout(): void {
+    const refreshToken = this.session()?.refreshToken;
     this.session.set(null);
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       // storage unavailable: nothing to clean
+    }
+    if (refreshToken) {
+      this.http.post<void>('/api/auth/logout', { refreshToken }).subscribe({
+        error: () => console.warn('Could not revoke the refresh token on the server.')
+      });
     }
     void this.router.navigateByUrl('/login');
   }

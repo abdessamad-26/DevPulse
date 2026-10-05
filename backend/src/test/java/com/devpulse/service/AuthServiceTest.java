@@ -4,8 +4,10 @@ import com.devpulse.dto.AuthRequest;
 import com.devpulse.dto.AuthResponse;
 import com.devpulse.dto.RegisterRequest;
 import com.devpulse.entity.Role;
+import com.devpulse.entity.RefreshToken;
 import com.devpulse.entity.User;
 import com.devpulse.exception.ApiException;
+import com.devpulse.repository.RefreshTokenRepository;
 import com.devpulse.repository.RoleRepository;
 import com.devpulse.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +22,11 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +41,12 @@ class AuthServiceTest {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -116,6 +128,8 @@ class AuthServiceTest {
         when(userRepository.findByEmail("bob@example.com")).thenReturn(Optional.of(user));
         when(jwtService.generateToken("bob@example.com", "ADMIN")).thenReturn("access-token");
         when(jwtService.generateRefreshToken("bob@example.com")).thenReturn("refresh-token");
+        when(jwtService.extractExpiration("refresh-token"))
+                .thenReturn(Date.from(LocalDateTime.now(ZoneOffset.UTC).plusDays(1).toInstant(ZoneOffset.UTC)));
 
         AuthResponse response = authService.authenticate(new AuthRequest("bob@example.com", "secret123"));
 
@@ -123,6 +137,7 @@ class AuthServiceTest {
         assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
         assertThat(response.getUser().getEmail()).isEqualTo("bob@example.com");
         assertThat(response.getUser().getRole()).isEqualTo("ADMIN");
+        Mockito.verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 
     @Test
@@ -135,7 +150,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void shouldRefreshAccessTokenWhenRefreshTokenIsValid() {
+    void shouldRotateRefreshTokenWhenRefreshTokenIsValid() {
         User user = new User();
         user.setId(2L);
         user.setEmail("carol@example.com");
@@ -143,15 +158,47 @@ class AuthServiceTest {
         role.setName("VIEWER");
         user.setRole(role);
 
+        RefreshToken storedToken = new RefreshToken();
+        storedToken.setUser(user);
+        storedToken.setFamilyId(UUID.randomUUID());
+        storedToken.setExpiresAt(LocalDateTime.now(ZoneOffset.UTC).plusDays(1));
+
         when(jwtService.isRefreshTokenValid("valid-refresh-token")).thenReturn(true);
         when(jwtService.extractUsername("valid-refresh-token")).thenReturn("carol@example.com");
         when(userRepository.findByEmail("carol@example.com")).thenReturn(Optional.of(user));
+        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(storedToken));
+        when(refreshTokenRepository.revokeIfActive(any(), any())).thenReturn(1);
+        when(jwtService.generateRefreshToken("carol@example.com")).thenReturn("rotated-refresh-token");
+        when(jwtService.extractExpiration("rotated-refresh-token"))
+                .thenReturn(Date.from(LocalDateTime.now(ZoneOffset.UTC).plusDays(1).toInstant(ZoneOffset.UTC)));
         when(jwtService.generateToken("carol@example.com", "VIEWER")).thenReturn("new-access-token");
 
         AuthResponse response = authService.refresh("valid-refresh-token");
 
         assertThat(response.getToken()).isEqualTo("new-access-token");
-        assertThat(response.getRefreshToken()).isEqualTo("valid-refresh-token");
+        assertThat(response.getRefreshToken()).isEqualTo("rotated-refresh-token");
+        Mockito.verify(refreshTokenRepository).save(any(RefreshToken.class));
+    }
+
+    @Test
+    void shouldRevokeRefreshTokenFamilyWhenARefreshTokenIsReused() {
+        User user = new User();
+        user.setId(2L);
+        user.setEmail("carol@example.com");
+        RefreshToken storedToken = new RefreshToken();
+        storedToken.setUser(user);
+        storedToken.setFamilyId(UUID.randomUUID());
+        storedToken.setExpiresAt(LocalDateTime.now(ZoneOffset.UTC).plusDays(1));
+        storedToken.setRevokedAt(LocalDateTime.now(ZoneOffset.UTC));
+
+        when(jwtService.isRefreshTokenValid("reused-refresh-token")).thenReturn(true);
+        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(storedToken));
+
+        assertThatThrownBy(() -> authService.refresh("reused-refresh-token"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("reuse");
+
+        Mockito.verify(refreshTokenRepository).revokeActiveFamily(any(), any());
     }
 
     @Test

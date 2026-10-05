@@ -45,7 +45,7 @@ class ChaosServiceTest {
         ChaosService chaosService = new ChaosService(chaosSimulationRepository, incidentRepository, projectAccessService, false);
 
         Project project = projectWithEnvironment("staging");
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(authentication.getName()).thenReturn("dev@example.com");
         when(incidentRepository.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(chaosSimulationRepository.save(any(ChaosSimulation.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -69,7 +69,7 @@ class ChaosServiceTest {
         ChaosService chaosService = new ChaosService(chaosSimulationRepository, incidentRepository, projectAccessService, false);
 
         Project project = projectWithEnvironment("production");
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
 
         ChaosRequest request = new ChaosRequest();
         request.setAction("cpu_load");
@@ -84,7 +84,7 @@ class ChaosServiceTest {
         ChaosService chaosService = new ChaosService(chaosSimulationRepository, incidentRepository, projectAccessService, true);
 
         Project project = projectWithEnvironment("production");
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
         when(authentication.getName()).thenReturn("admin@example.com");
         when(incidentRepository.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(chaosSimulationRepository.save(any(ChaosSimulation.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -102,7 +102,7 @@ class ChaosServiceTest {
         ChaosService chaosService = new ChaosService(chaosSimulationRepository, incidentRepository, projectAccessService, false);
 
         Project project = projectWithEnvironment("development");
-        when(projectAccessService.requireAccessibleProject(1L, authentication)).thenReturn(project);
+        when(projectAccessService.requireWritableProject(1L, authentication)).thenReturn(project);
 
         ChaosRequest request = new ChaosRequest();
         request.setAction("DELETE_EVERYTHING");

@@ -47,15 +47,9 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(request.getRefreshToken()));
     }
 
-    /**
-     * DevPulse uses stateless JWTs: there is no server-side session to destroy.
-     * Logout is therefore a client responsibility (discard the stored tokens).
-     * This endpoint exists so clients have a single place to call; it does not
-     * yet blacklist the token/refresh token server-side (tracked as a known
-     * limitation in docs/architecture.md).
-     */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<Void> logout(@Valid @RequestBody(required = false) RefreshRequest request) {
+        authService.logout(request == null ? null : request.getRefreshToken());
         return ResponseEntity.noContent().build();
     }
 }
