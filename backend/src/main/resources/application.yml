@@ -21,6 +21,11 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+  http:
+    client:
+      # Outbound calls (e.g. to the AI service) must never block a request thread forever.
+      connect-timeout: ${HTTP_CLIENT_CONNECT_TIMEOUT:2s}
+      read-timeout: ${HTTP_CLIENT_READ_TIMEOUT:10s}
 
 server:
   port: ${SERVER_PORT:8081}

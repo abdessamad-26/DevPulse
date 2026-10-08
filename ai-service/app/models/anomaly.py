@@ -1,8 +1,10 @@
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
 
+MAX_HISTORY_POINTS = 10_000
+
 
 class AnomalyRequest(BaseModel):
-    history: list[FiniteFloat] = Field(default_factory=list)
+    history: list[FiniteFloat] = Field(default_factory=list, max_length=MAX_HISTORY_POINTS)
     value: FiniteFloat
     threshold: FiniteFloat = Field(default=3.0, gt=0)
 

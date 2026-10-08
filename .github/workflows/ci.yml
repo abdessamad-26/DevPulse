@@ -9,9 +9,15 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch/PR makes the older run pointless.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +37,19 @@ jobs:
         working-directory: backend
         run: mvn -B -V -T 1C -DskipTests package
 
+      # The jar is produced here, in the job that built it. (The former
+      # "publish-artifacts" job started from a fresh checkout, so it never had
+      # a jar to upload and silently published an empty artifact.)
+      - name: Upload backend jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: devpulse-backend-jar
+          path: backend/target/*.jar
+          if-no-files-found: error
+
   build-frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,6 +70,7 @@ jobs:
 
   test-ai-service:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,6 +92,7 @@ jobs:
 
   scan-containers:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [build-backend, build-frontend, test-ai-service]
     steps:
       - name: Checkout
@@ -111,23 +130,3 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: '1'
-
-  publish-artifacts:
-    runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, test-ai-service, scan-containers]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Archive backend artifact
-        if: always()
-        run: |
-          mkdir -p build_artifacts
-          cp backend/target/*.jar build_artifacts/ 2>/dev/null || true
-          ls -la build_artifacts || true
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: devpulse-artifacts
-          path: build_artifacts

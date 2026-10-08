@@ -1,7 +1,8 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+# `npm ci` installs exactly what package-lock.json pins (reproducible, same as CI).
+RUN npm ci
 COPY . .
 RUN npm run build
 

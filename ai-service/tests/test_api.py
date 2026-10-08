@@ -35,6 +35,49 @@ def test_analyze_incidents_rejects_missing_title():
     assert response.status_code == 422
 
 
+def test_analyze_incidents_rejects_blank_title():
+    response = client.post("/api/analysis/incidents", json={"title": "   ", "description": "something broke"})
+    assert response.status_code == 422
+
+
+def test_analyze_incidents_rejects_oversized_title_with_422_instead_of_500():
+    response = client.post(
+        "/api/analysis/incidents",
+        json={"title": "x" * 256, "description": "something broke"},
+    )
+    assert response.status_code == 422
+
+
+def test_analyze_incidents_rejects_too_many_recent_logs():
+    response = client.post(
+        "/api/analysis/incidents",
+        json={"title": "Errors", "description": "many logs", "recent_logs": ["line"] * 201},
+    )
+    assert response.status_code == 422
+
+
+def test_analyze_incidents_accepts_camel_case_recent_logs_and_null_severity():
+    response = client.post(
+        "/api/analysis/incidents",
+        json={
+            "title": "Checkout failing",
+            "description": "Users cannot pay",
+            "severity": None,
+            "recentLogs": ["Connection to postgres timed out"],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["classification"] == "DATABASE"
+
+
+def test_detect_anomalies_rejects_oversized_history():
+    response = client.post(
+        "/api/analysis/anomalies",
+        json={"history": [1.0] * 10_001, "value": 2.0},
+    )
+    assert response.status_code == 422
+
+
 def test_detect_anomalies_matches_expected_camel_case_contract():
     response = client.post(
         "/api/analysis/anomalies",

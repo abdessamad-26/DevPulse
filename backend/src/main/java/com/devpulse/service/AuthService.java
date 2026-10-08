@@ -12,8 +12,8 @@ import com.devpulse.repository.RefreshTokenRepository;
 import com.devpulse.repository.RoleRepository;
 import com.devpulse.repository.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,7 +77,9 @@ public class AuthService {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-        } catch (BadCredentialsException ex) {
+        } catch (AuthenticationException ex) {
+            // Covers bad credentials AND disabled/locked accounts (previously a 500),
+            // without revealing which one it was.
             throw new ApiException("Invalid credentials");
         }
 
