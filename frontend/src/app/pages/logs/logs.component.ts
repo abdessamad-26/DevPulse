@@ -21,6 +21,12 @@ import { LogEntry } from '../../core/models';
       <div class="empty-state" *ngIf="!projectContext.selected()">Select or create a project first.</div>
 
       <ng-container *ngIf="projectContext.selected()">
+        <div class="card muted" *ngIf="loading()" role="status" aria-live="polite">Loading logs...</div>
+        <div class="card error-state" *ngIf="loadError() as message" role="alert">
+          <p>{{ message }}</p>
+          <button type="button" class="btn btn-sm" (click)="search()">Retry</button>
+        </div>
+
         <div class="card">
           <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px,1fr)) auto;">
             <label class="field">
@@ -68,7 +74,7 @@ import { LogEntry } from '../../core/models';
           </div>
         </div>
         <ng-template #empty>
-          <div class="empty-state" *ngIf="loaded()">No log entries match the current filters.</div>
+          <div class="empty-state" *ngIf="loaded() && !loading() && !loadError()">No log entries match the current filters.</div>
         </ng-template>
       </ng-container>
     </section>
@@ -81,6 +87,8 @@ export class LogsComponent {
 
   readonly logs = signal<LogEntry[]>([]);
   readonly loaded = signal(false);
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
   readonly page = signal(0);
   readonly totalPages = signal(0);
 
@@ -93,6 +101,9 @@ export class LogsComponent {
       const projectId = this.projectContext.selectedId();
       if (!projectId) {
         this.logs.set([]);
+        this.loading.set(false);
+        this.loaded.set(false);
+        this.loadError.set(null);
         return;
       }
       this.page.set(0);
@@ -108,13 +119,20 @@ export class LogsComponent {
   }
 
   private reload(projectId: number): void {
+    this.loading.set(true);
+    this.loadError.set(null);
     this.api.logs(projectId, { service: this.service || undefined, level: this.level || undefined, q: this.q || undefined }, this.page(), 20).subscribe({
       next: (res) => {
         this.logs.set(res.content);
         this.totalPages.set(res.totalPages);
         this.loaded.set(true);
+        this.loading.set(false);
       },
-      error: () => this.loaded.set(true),
+      error: () => {
+        this.loaded.set(true);
+        this.loading.set(false);
+        this.loadError.set('Could not load logs. Check your connection and try again.');
+      },
     });
   }
 
