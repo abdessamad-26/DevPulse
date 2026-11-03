@@ -13,7 +13,7 @@ preserved.
 | 5 | Run and fix the Java verification suite | Maven build and all backend tests pass; failures are fixed without suppressing tests. | Complete; temporary verified Maven/JDK used |
 | 6 | Verify PostgreSQL and Flyway behavior | Fresh and existing PostgreSQL database startup/migrations are exercised; schema validation succeeds. | Blocked locally: Docker daemon unavailable |
 | 7 | Remediate frontend dependency advisories | Patch affected dependencies within current major lines, rescan, and rerun frontend checks. | Complete; npm audit and advisory scan clean; 8 tests/build pass |
-| 8 | Close the product/API gaps | User administration/settings are only implemented after defining a safe API, roles, and server-side authorization contract; no fake data or UI-only permissions. | Requires contract/design work |
+| 8 | Close the product/API gaps | Define a safe account/admin API and enforce its role and session rules on the server; keep invitations and unsupported workflows out of the UI. | Complete for profile, password, and account role/status administration; invitations remain out of scope |
 | 9 | Complete cross-component validation and CI | Angular, Java, Python, API integration, and critical browser flows are tested; CI fails on required build/test/scan failures. | Partially verified; see audit |
 | 10 | Finalize release evidence | Release checklist and final report list exact changes, commands, results, residual risks, and manual actions. | Complete; release remains blocked by unchecked production validations |
 

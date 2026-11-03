@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -27,6 +28,11 @@ import { MetricPoint } from '../../core/models';
       <div class="empty-state" *ngIf="!projectContext.selected()">Select or create a project first.</div>
 
       <ng-container *ngIf="projectContext.selected()">
+        <div class="card muted" *ngIf="loading()" role="status">Loading metrics…</div>
+        <div class="card error-state" *ngIf="loadError() as message" role="alert">
+          <p>{{ message }}</p>
+          <button class="btn btn-sm" type="button" (click)="retry()">Retry</button>
+        </div>
         <div class="card" *ngIf="showForm()">
           <h3>Ingest a metric point</h3>
           <p class="muted" style="margin-top:-6px;">This immediately runs against the project's enabled alert rules.</p>
@@ -56,7 +62,7 @@ import { MetricPoint } from '../../core/models';
           </form>
         </div>
 
-        <div class="table-wrap card" *ngIf="metrics().length; else empty">
+        <div class="table-wrap card" *ngIf="metrics().length && !loading() && !loadError()">
           <table class="data">
             <thead><tr><th>Metric</th><th>Value</th><th>Service</th><th>Captured</th></tr></thead>
             <tbody>
@@ -71,9 +77,7 @@ import { MetricPoint } from '../../core/models';
             </tbody>
           </table>
         </div>
-        <ng-template #empty>
-          <div class="empty-state" *ngIf="loaded()">No metrics ingested for this project yet.</div>
-        </ng-template>
+        <div class="empty-state" *ngIf="loaded() && !loading() && !loadError() && !metrics().length">No metrics ingested for this project yet.</div>
       </ng-container>
     </section>
   `,
@@ -85,9 +89,12 @@ export class MetricsComponent {
 
   readonly metrics = signal<MetricPoint[]>([]);
   readonly loaded = signal(false);
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
   readonly showForm = signal(false);
   readonly submitting = signal(false);
   readonly submitError = signal<string | null>(null);
+  private activeRequest: Subscription | null = null;
 
   metricName = '';
   value: number | null = null;
@@ -97,8 +104,12 @@ export class MetricsComponent {
   constructor() {
     effect(() => {
       const projectId = this.projectContext.selectedId();
+      this.activeRequest?.unsubscribe();
+      this.metrics.set([]);
+      this.loaded.set(false);
+      this.loadError.set(null);
       if (!projectId) {
-        this.metrics.set([]);
+        this.loading.set(false);
         return;
       }
       this.reload(projectId);
@@ -106,13 +117,28 @@ export class MetricsComponent {
   }
 
   private reload(projectId: number): void {
-    this.api.metrics(projectId).subscribe({
+    this.activeRequest?.unsubscribe();
+    this.loading.set(true);
+    this.loadError.set(null);
+    this.activeRequest = this.api.metrics(projectId).subscribe({
       next: (page) => {
         this.metrics.set(page.content);
         this.loaded.set(true);
+        this.loading.set(false);
+        this.activeRequest = null;
       },
-      error: () => this.loaded.set(true),
+      error: () => {
+        this.loaded.set(true);
+        this.loading.set(false);
+        this.loadError.set('Could not load metrics. Check your connection and try again.');
+        this.activeRequest = null;
+      },
     });
+  }
+
+  retry(): void {
+    const projectId = this.projectContext.selectedId();
+    if (projectId) this.reload(projectId);
   }
 
   submit(): void {

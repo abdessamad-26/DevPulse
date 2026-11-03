@@ -92,11 +92,12 @@ public class ProjectAccessService {
         return project;
     }
 
-    public void requireGlobalAdmin(Authentication authentication) {
+    public User requireGlobalAdmin(Authentication authentication) {
         User user = resolveCurrentUser(authentication);
         if (!isAdmin(user)) {
-            throw new AccessDeniedException("Only a global ADMIN can access all audit logs");
+            throw new AccessDeniedException("Only a global ADMIN can perform this operation");
         }
+        return user;
     }
 
     /**

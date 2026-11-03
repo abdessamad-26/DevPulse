@@ -152,3 +152,44 @@ Java 25 is the latest LTS release as of the audit date, according to the
 This audit does not claim that an external service, deployment, production
 environment, or unavailable local build succeeded. Existing uncommitted user
 changes have been preserved. No secret-bearing local files were inspected.
+
+## Follow-up audit — 2026-11-03
+
+### Implemented
+
+- Added self-service name changes and password changes. Password updates
+  require the current password, enforce BCrypt's 72-byte input limit, revoke
+  all refresh-token sessions, clear the refresh cookie, and write an audit
+  event.
+- Added paginated global user administration for `ADMIN` users. Role and
+  enabled-status changes are server-authorized, audited, and revoke refresh
+  sessions. Administrators cannot change their own global access; concurrent
+  changes are serialized around the ADMIN role so the last active administrator
+  cannot be removed.
+- Replaced the Settings placeholder with profile, password, and admin-user
+  controls backed by those APIs.
+- Fixed Dashboard and Metrics request handling so API failures show an error
+  and retry action instead of looking like successful empty data.
+- Added backend integration coverage for profile/password changes and
+  administrator authorization/role updates. These new Java tests are written
+  but have not been run in this environment.
+
+### Verification in this environment
+
+| Check | Result |
+| --- | --- |
+| `npm test -- --watch=false` | **8 tests passed in 4 files** |
+| `npm run build` | **passed** |
+| `mvn -version` | **blocked**; Maven is not installed or available on `PATH`, so the backend suite could not be run after these changes |
+| Docker/PostgreSQL/Flyway | Still requires a working Docker daemon and database-backed run; not verified by this follow-up |
+
+### Remaining gaps
+
+- Prometheus, Grafana, Loki, and OpenTelemetry are not deployed or wired into
+  Compose; `monitoring/` remains empty.
+- Kubernetes/GitOps manifests and browser end-to-end tests are still absent.
+- The application has no invitation flow for accounts that do not exist yet.
+- Accessibility review, Python dependency-warning cleanup, production backup/
+  rollback planning, and a full authorization/security review remain open.
+- Production release is still blocked on Java verification of these new APIs,
+  PostgreSQL/Flyway and container startup checks, full CI, and E2E coverage.

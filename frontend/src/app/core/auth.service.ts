@@ -97,6 +97,18 @@ export class AuthService {
     void this.router.navigateByUrl('/login');
   }
 
+  updateUser(user: User): void {
+    const current = this.session();
+    if (!current) return;
+    const next = { ...current, user };
+    this.session.set(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // The in-memory session still reflects the updated profile.
+    }
+  }
+
   private store(res: AuthResponse): void {
     const session: Session = { token: res.token, refreshToken: res.refreshToken, user: res.user };
     this.session.set(session);

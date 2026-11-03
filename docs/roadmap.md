@@ -2,7 +2,7 @@
 
 This roadmap breaks down the project into milestones and deliverables with rough estimates for an MVP.
 
-## Current status (as of 2026-10-08)
+## Current status (as of 2026-11-03)
 
 Based on what is actually in the repository:
 
@@ -11,12 +11,12 @@ Based on what is actually in the repository:
 | 0 - Analysis & Design | Done | `docs/architecture.md`, `docs/api.md` |
 | 1 - Repository & Tooling | Done | CI workflow, `.env.example`, dev scripts, contributing guide |
 | 2 - Backend Core | Done | JWT + rotating refresh tokens, roles, project membership, Flyway migrations, unit and integration tests |
-| 3 - Frontend | Partial | Shell, auth flow and all main pages exist. Still missing: Chart.js charts, screens for project members, ingestion API keys and audit logs, accessibility review |
-| 4 - Observability & AI | Partial | AI service (rules + z-score) and deployment/incident correlation exist. OpenTelemetry, Prometheus, Loki and Grafana are not implemented (`monitoring/` is empty) |
-| 5 - Docker & Compose | Partial | Dockerfiles, Compose with healthchecks, demo mode. Prometheus/Grafana/Loki are not part of the Compose stack yet |
+| 3 - Frontend | Partial | Shell, auth flow, SVG metric trend, project members, ingestion keys, audit history, account settings, and admin user controls exist. Still missing: accessibility review and browser E2E coverage |
+| 4 - Observability & AI | Partial | AI service (rules + z-score), metric trend visualization, and deployment/incident correlation exist. OpenTelemetry, Prometheus, Loki and Grafana are not implemented (`monitoring/` is empty) |
+| 5 - Docker & Compose | Partial | Dockerfiles, Compose with healthchecks, demo mode. Prometheus/Grafana/Loki are not part of the Compose stack yet; PostgreSQL startup and migrations still need runtime verification |
 | 6 - Kubernetes & GitOps | Not started | `infrastructure/` only contains empty placeholder folders |
 | 7 - CI/CD Harden & Security | Partial | Tests, image builds and Trivy scans run in CI; Dependabot configured. Missing: lint stage, image publishing, secrets-management guidance |
-| 8 - Testing, Docs, Demo | Not started | No end-to-end tests yet (`tests/` is empty), no tagged release |
+| 8 - Testing, Docs, Demo | Partial | API and unit/integration tests exist, but there are no checked-in browser E2E tests and no tagged release |
 
 ## Phase 0 — Analysis & Design (1 week)
 - Deliverables: Vision, Architecture docs, Data model, API list, K8s plan, CI plan, Security plan.

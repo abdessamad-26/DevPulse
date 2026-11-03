@@ -65,6 +65,56 @@ refresh token and discard both tokens. Already-issued access tokens remain
 valid until their short expiration because access-token revocation is not
 implemented.
 
+### Account profile and password
+
+These endpoints require an access token. The account email is immutable through
+self-service. A password change requires the current password, accepts a new
+password of 12–72 characters and at most 72 UTF-8 bytes, revokes every refresh-token session for that user,
+and expires the browser's refresh cookie. The current access token remains valid
+until its normal short expiration.
+
+#### `PATCH /api/users/me`
+
+Update the authenticated user's first and last names:
+
+```json
+{ "firstName": "Ada", "lastName": "Lovelace" }
+```
+
+Returns the updated user summary. The action is written to the global audit log.
+
+#### `POST /api/users/me/password`
+
+```json
+{ "currentPassword": "current-password", "newPassword": "a-new-password-with-12-chars" }
+```
+
+Returns `204 No Content`.
+
+### Global user administration
+
+Only global `ADMIN` users may list accounts or change a user's global role and
+enabled status. Project roles remain separate. Changing either field revokes
+that user's refresh sessions; disabled accounts lose access immediately. An
+administrator cannot change their own global role or enabled status, and the
+last active administrator cannot be disabled or demoted. Each change is audited.
+
+#### `GET /api/admin/users`
+
+Returns a paginated list of users. Accepts `page` (default `0`) and `size`
+(default `20`, maximum `100`). The response contains account identifiers,
+names, email, role, enabled status, and creation time; it never includes
+password data.
+
+#### `PATCH /api/admin/users/{userId}`
+
+```json
+{ "role": "VIEWER", "enabled": true }
+```
+
+Only `ADMIN`, `DEVELOPER`, and `VIEWER` roles are accepted. Both fields are
+required. Returns the updated safe user summary.
+
 ### Audit logs
 
 The API records successful logins, refresh-token rotations and reuse attempts,
@@ -418,6 +468,6 @@ Backend errors use this envelope:
 }
 ```
 
-There is no user-administration API or invitation API yet. Collection endpoints
-use bounded page requests and explicit response DTOs; ingestion-key and member
-collections remain intentionally small project-scoped lists.
+There is no invitation API yet. Collection endpoints use bounded page requests
+and explicit response DTOs; ingestion-key and member collections remain
+intentionally small project-scoped lists.

@@ -11,6 +11,12 @@ export interface User {
   role: string | null;
 }
 
+export interface AdminUser extends User {
+  role: RoleName;
+  enabled: boolean;
+  createdAt: string;
+}
+
 export interface AuthResponse {
   token: string;
   refreshToken: string;
@@ -22,6 +28,16 @@ export interface RegisterPayload {
   lastName: string;
   email: string;
   password: string;
+}
+
+export interface ProfileUpdatePayload {
+  firstName: string;
+  lastName: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface Project {

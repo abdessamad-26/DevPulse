@@ -5,6 +5,8 @@ import {
   Alert,
   AlertRule,
   AlertRulePayload,
+  AdminUser,
+  ChangePasswordPayload,
   ChaosSimulation,
   Deployment,
   DeploymentPayload,
@@ -16,8 +18,10 @@ import {
   MetricIngestPoint,
   MetricPoint,
   Page,
+  ProfileUpdatePayload,
   Project,
   ProjectPayload,
+  User,
   ServiceItem,
 } from './models';
 
@@ -25,6 +29,20 @@ import {
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
+
+  // User account and administration
+  updateProfile(body: ProfileUpdatePayload): Observable<User> {
+    return this.http.patch<User>('/api/users/me', body);
+  }
+  changePassword(body: ChangePasswordPayload): Observable<void> {
+    return this.http.post<void>('/api/users/me/password', body);
+  }
+  adminUsers(page = 0, size = 20): Observable<Page<AdminUser>> {
+    return this.http.get<Page<AdminUser>>('/api/admin/users', { params: this.pageParams(page, size) });
+  }
+  updateAdminUser(userId: number, body: { role: 'ADMIN' | 'DEVELOPER' | 'VIEWER'; enabled: boolean }): Observable<AdminUser> {
+    return this.http.patch<AdminUser>('/api/admin/users/' + userId, body);
+  }
 
   // Projects
   projects(page = 0, size = 100): Observable<Page<Project>> {

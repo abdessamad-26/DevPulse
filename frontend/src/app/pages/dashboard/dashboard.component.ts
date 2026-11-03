@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin, Subscription } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { ProjectContext } from '../../core/project-context.service';
 import { Alert, Deployment, Incident, ServiceItem } from '../../core/models';
@@ -25,7 +24,13 @@ import { Alert, Deployment, Incident, ServiceItem } from '../../core/models';
       </div>
 
       <ng-container *ngIf="projectContext.selected()">
-        <div class="summary-grid">
+        <div class="card muted" *ngIf="loading()" role="status">Loading dashboard…</div>
+        <div class="card error-state" *ngIf="loadError() as message" role="alert">
+          <p>{{ message }}</p>
+          <button class="btn btn-sm" type="button" (click)="retry()">Retry</button>
+        </div>
+
+        <div class="summary-grid" *ngIf="loaded() && !loadError()">
           <div class="summary-card">
             <span>Services</span>
             <strong>{{ services().length }}</strong>
@@ -44,7 +49,7 @@ import { Alert, Deployment, Incident, ServiceItem } from '../../core/models';
           </div>
         </div>
 
-        <div class="card-grid">
+        <div class="card-grid" *ngIf="loaded() && !loadError()">
           <div class="card">
             <h3>Recent incidents</h3>
             <div class="stack" *ngIf="incidents().length; else noIncidents">
@@ -96,32 +101,62 @@ export class DashboardComponent {
   readonly incidents = signal<Incident[]>([]);
   readonly alerts = signal<Alert[]>([]);
   readonly deployments = signal<Deployment[]>([]);
+  readonly loading = signal(false);
+  readonly loaded = signal(false);
+  readonly loadError = signal<string | null>(null);
 
   readonly openIncidents = computed(() => this.incidents().filter((i) => !['RESOLVED', 'CLOSED'].includes(i.status.toUpperCase())));
   readonly openAlerts = computed(() => this.alerts().filter((a) => ['OPEN', 'ACKNOWLEDGED'].includes(a.status.toUpperCase())));
   readonly lastDeployment = computed(() => this.deployments()[0] ?? null);
+  private activeRequest: Subscription | null = null;
 
   constructor() {
     effect(() => {
       const projectId = this.projectContext.selectedId();
       if (!projectId) {
+        this.activeRequest?.unsubscribe();
         this.services.set([]);
         this.incidents.set([]);
         this.alerts.set([]);
         this.deployments.set([]);
+        this.loading.set(false);
+        this.loaded.set(false);
+        this.loadError.set(null);
         return;
       }
-      forkJoin({
-        services: this.api.services(projectId).pipe(catchError(() => of({ content: [] as ServiceItem[] }))),
-        incidents: this.api.incidents(projectId).pipe(catchError(() => of({ content: [] as Incident[] }))),
-        alerts: this.api.alerts(projectId).pipe(catchError(() => of({ content: [] as Alert[] }))),
-        deployments: this.api.deployments(projectId).pipe(catchError(() => of({ content: [] as Deployment[] }))),
-      }).subscribe(({ services, incidents, alerts, deployments }) => {
+      this.load(projectId);
+    });
+  }
+
+  retry(): void {
+    const projectId = this.projectContext.selectedId();
+    if (projectId) this.load(projectId);
+  }
+
+  private load(projectId: number): void {
+    this.activeRequest?.unsubscribe();
+    this.loading.set(true);
+    this.loaded.set(false);
+    this.loadError.set(null);
+    this.activeRequest = forkJoin({
+      services: this.api.services(projectId),
+      incidents: this.api.incidents(projectId),
+      alerts: this.api.alerts(projectId),
+      deployments: this.api.deployments(projectId),
+    }).subscribe({
+      next: ({ services, incidents, alerts, deployments }) => {
         this.services.set(services.content);
         this.incidents.set(incidents.content);
         this.alerts.set(alerts.content);
         this.deployments.set(deployments.content);
-      });
+        this.loading.set(false);
+        this.loaded.set(true);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.loaded.set(true);
+        this.loadError.set('Could not load the dashboard. Check your connection and try again.');
+      },
     });
   }
 }
