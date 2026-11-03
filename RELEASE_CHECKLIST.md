@@ -21,13 +21,12 @@
 - [x] Dashboard and metrics pages distinguish API failures from successful empty results and provide retry actions.
 - [x] Frontend after these changes: `npm test -- --watch=false` — **8 tests passed**; `npm run build` — **passed**.
 
-## Implemented; backend verification pending
+## Implemented and backend verified
 
 - Self-service profile/password APIs and admin account controls are implemented
   with server-side authorization, session revocation, audit events, and
   safeguards for the current and last active administrator.
-- Integration coverage for these API flows was added, but it has not been run
-  because Maven is unavailable in the current environment.
+- Integration coverage for these API flows now passes in mvn clean verify: **92 tests passed, 0 failures/errors** on Oracle JDK 26.0.1 (Java release target 25).
 
 ## Required before a production release
 
@@ -39,7 +38,7 @@
   including image scans.
 - [ ] Add/run end-to-end tests for critical user journeys and the Java-Python
   service contract; no browser E2E suite was verified here.
-- [ ] Run backend `mvn clean verify` for the account/admin APIs and added integration tests; Maven is not available in the current environment.
+- [x] Run backend mvn clean verify for the account/admin APIs and added integration tests: **92 tests passed, 0 failures/errors**; build and package verification succeeded.
 - [ ] Add an invitation flow if the product needs inviting people who do not yet have accounts.
 - [ ] Decide whether Prometheus/Grafana/Loki deployment is required or update
   architecture expectations; these services are not present in Compose.

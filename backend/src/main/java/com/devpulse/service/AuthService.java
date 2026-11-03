@@ -11,6 +11,7 @@ import com.devpulse.exception.ApiException;
 import com.devpulse.repository.RefreshTokenRepository;
 import com.devpulse.repository.RoleRepository;
 import com.devpulse.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -80,7 +81,7 @@ public class AuthService {
         } catch (AuthenticationException ex) {
             // Covers bad credentials AND disabled/locked accounts (previously a 500),
             // without revealing which one it was.
-            throw new ApiException("Invalid credentials");
+            throw new ApiException("Invalid credentials", HttpStatus.UNAUTHORIZED);
         }
 
         User user = userRepository.findByEmail(request.getEmail())
