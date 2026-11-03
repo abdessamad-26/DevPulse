@@ -26,7 +26,7 @@
 - Self-service profile/password APIs and admin account controls are implemented
   with server-side authorization, session revocation, audit events, and
   safeguards for the current and last active administrator.
-- Integration coverage for these API flows now passes in mvn clean verify: **92 tests passed, 0 failures/errors** on Oracle JDK 26.0.1 (Java release target 25).
+- Integration coverage for these API flows now passes in `mvn clean verify`: **92 tests passed, 0 failures/errors** on Oracle JDK 26.0.1 (Java release target 25).
 
 ## Required before a production release
 
@@ -38,7 +38,7 @@
   including image scans.
 - [ ] Add/run end-to-end tests for critical user journeys and the Java-Python
   service contract; no browser E2E suite was verified here.
-- [x] Run backend mvn clean verify for the account/admin APIs and added integration tests: **92 tests passed, 0 failures/errors**; build and package verification succeeded.
+- [x] Run backend `mvn clean verify` for the account/admin APIs and added integration tests: **92 tests passed, 0 failures/errors**; build and package verification succeeded.
 - [ ] Add an invitation flow if the product needs inviting people who do not yet have accounts.
 - [ ] Decide whether Prometheus/Grafana/Loki deployment is required or update
   architecture expectations; these services are not present in Compose.
@@ -51,9 +51,9 @@
 
 ## Release verdict
 
-**Not ready for production yet.** The earlier Java baseline passed, and the
-frontend tests/build pass after this follow-up. The new Java account/admin APIs
-still need a Maven run. Docker/PostgreSQL/Flyway behavior, full-system E2E,
-target-environment CI, monitoring deployment, and some product workflows remain
-unverified or incomplete. Do not deploy until the unchecked release-blocking
-items above are resolved and reviewed.
+**Not ready for production yet.** Backend verification now passes, including
+the new account/admin APIs; the frontend tests/build also pass.
+Docker/PostgreSQL/Flyway behavior, full-system E2E, target-environment CI,
+monitoring deployment, and some product workflows remain unverified or
+incomplete. Do not deploy until the unchecked release-blocking items above are
+resolved and reviewed.
