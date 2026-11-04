@@ -3,6 +3,11 @@ dist/
 .angular/
 src/**/*.js
 *.tsbuildinfo
+e2e/
+playwright.config.ts
+playwright-report/
+test-results/
+.playwright-browsers/
 .vscode/
 .env
 .env.*

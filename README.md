@@ -53,6 +53,10 @@ Compose uses the Spring `prod` profile with PostgreSQL and Flyway migrations by 
 
 When demo mode is enabled, use `demo@devpulse.local` / `DemoPass123!`. These are public demo credentials: do not enable demo mode on an internet-accessible deployment.
 
+For a guided walkthrough, see [docs/demo.md](docs/demo.md). It shows how to
+create an alert from a synthetic metric and analyze a sample incident. The
+analysis is deterministic and runs locally; it does not call a hosted AI model.
+
 To stop the services without deleting database data:
 
 ```sh
@@ -79,6 +83,18 @@ npm test -- --watch=false
 npm run build
 ```
 
+Browser demo flow (start the Docker stack first):
+
+```sh
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
+
+The browser test creates a sample alert rule, metric, and incident in the
+selected local project. It uses synthetic data. CI runs this flow against a
+separate disposable Compose stack.
+
 AI service:
 
 ```sh
@@ -87,7 +103,14 @@ python -m pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The GitHub Actions workflow runs these checks, builds the container images, and scans the images for fixable HIGH and CRITICAL vulnerabilities with Trivy.
+The Python reference sender also has standard-library unit tests:
+
+```sh
+python -m unittest discover -s examples/python -v
+```
+
+The GitHub Actions workflow runs these checks, builds the container images,
+and scans the images for fixable HIGH and CRITICAL vulnerabilities with Trivy.
 
 ## Configuration and security
 
@@ -100,6 +123,8 @@ The GitHub Actions workflow runs these checks, builds the container images, and 
 ## Documentation
 
 - [docs/api.md](docs/api.md): implemented HTTP endpoints, request examples, authorization, and known API limitations.
+- [docs/demo.md](docs/demo.md): local walkthrough of the product's alert-to-incident flow.
+- [docs/integrations.md](docs/integrations.md): Python example for sending project-scoped metrics and logs.
 - [docs/architecture.md](docs/architecture.md): architecture and design notes.
 - [CONTRIBUTING.md](CONTRIBUTING.md): contribution guidance.
 

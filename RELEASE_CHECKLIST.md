@@ -18,6 +18,13 @@
   remediation.
 - [x] `docker compose config --quiet`: **passed**.
 - [x] `git diff --check`: **passed**.
+- [x] Python reference ingestion client: **3 unit tests passed**.
+- [x] Browser demo flow: **passed** against an isolated Docker Compose stack;
+  login, alert rule creation, metric ingestion, alert triggering, and incident
+  analysis all completed.
+- [x] Java-to-Python incident analysis contract: **1 focused backend test
+  passed** and the end-to-end browser flow passed after using an explicit
+  HTTP request factory.
 - [x] Dashboard and metrics pages distinguish API failures from successful empty results and provide retry actions.
 - [x] Frontend after these changes: `npm test -- --watch=false` — **8 tests passed**; `npm run build` — **passed**.
 
@@ -37,8 +44,8 @@
 - [ ] Verify Flyway schema validation against an existing PostgreSQL database.
 - [ ] Run the full CI workflow in GitHub Actions and review all required jobs,
   including image scans.
-- [ ] Add/run end-to-end tests for critical user journeys and the Java-Python
-  service contract; no browser E2E suite was verified here.
+- [x] Add and run a browser E2E test for the core alert-to-incident journey and
+  a focused Java-to-Python analysis contract test.
 - [x] Run backend `mvn clean verify` with the remaining auth hardening: **96 tests passed, 0 failures/errors**; build and package verification succeeded.
 - [ ] Add an invitation flow if the product needs inviting people who do not yet have accounts.
 - [ ] Decide whether Prometheus/Grafana/Loki deployment is required or update
