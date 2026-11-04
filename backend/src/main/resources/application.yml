@@ -37,8 +37,8 @@ ai:
 jwt:
   # No default on purpose: the app refuses to start without a strong JWT_SECRET (see JwtProperties).
   secret: ${JWT_SECRET:}
-  expiration: 3600000
-  refresh-expiration: 604800000
+  access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL:3600}
+  refresh-token-ttl-seconds: ${JWT_REFRESH_TOKEN_TTL:604800}
 
 devpulse:
   cors:
@@ -54,6 +54,15 @@ devpulse:
     allow-production: ${CHAOS_ALLOW_PRODUCTION:false}
   alerts:
     webhook-url: ${ALERT_WEBHOOK_URL:}
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  auth-rate-limit:
+    enabled: ${AUTH_RATE_LIMIT_ENABLED:true}
+    trust-proxy-header: ${AUTH_RATE_LIMIT_TRUST_PROXY_HEADER:false}
+  auth:
+    refresh-cookie:
+      secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+      same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
 
 management:
   endpoints:
@@ -66,6 +75,8 @@ management:
 
 springdoc:
   api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
     path: /v3/api-docs
   swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
     path: /swagger-ui.html

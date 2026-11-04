@@ -37,3 +37,8 @@ infrastructure/kubernetes/secrets/*.yaml
 # --- IDE ---
 .vscode/
 .idea/
+
+# Local credentials and generated TypeScript output
+auth_cookies.txt
+frontend/src/**/*.js
+frontend/*.tsbuildinfo

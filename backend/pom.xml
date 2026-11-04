@@ -22,7 +22,6 @@
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jwt.version>0.12.6</jwt.version>
-        <lombok.version>1.18.36</lombok.version>
         <postgresql.version>42.7.12</postgresql.version>
     </properties>
 
@@ -64,7 +63,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.6.0</version>
+            <version>2.8.17</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -83,8 +82,6 @@
             <version>${jwt.version}</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- Lombok removed for JDK25 compatibility; explicit accessors used where needed -->
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -98,41 +95,29 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.5.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
-            <version>5.5.0</version>
             <scope>test</scope>
         </dependency>
-        <!-- Byte Buddy not declared explicitly; mockito provides compatible runtime -->
     </dependencies>
     <build>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.1</version>
                 <configuration>
-                    <!-- Use release to produce classfiles compatible with Java 25 -->
+                    <!-- Use release to produce classfiles compatible with the configured JDK. -->
                     <release>${java.version}</release>
                 </configuration>
             </plugin>
-            <!-- Default maven-compiler-plugin configuration used; removed explicit annotationProcessorPaths to avoid incompatible processors on JDK25 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

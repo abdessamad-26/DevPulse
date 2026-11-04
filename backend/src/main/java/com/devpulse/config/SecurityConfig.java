@@ -2,6 +2,7 @@ package com.devpulse.config;
 
 import com.devpulse.security.JwtAuthenticationFilter;
 import com.devpulse.security.IngestionApiKeyAuthenticationFilter;
+import com.devpulse.security.AuthRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -33,14 +34,20 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final IngestionApiKeyAuthenticationFilter ingestionApiKeyAuthenticationFilter;
+    private final AuthRateLimitFilter authRateLimitFilter;
+    private final boolean apiDocsEnabled;
 
     @Value("${devpulse.cors.allowed-origins:http://localhost:4200,http://localhost:3000,http://localhost:49337,http://127.0.0.1:49337}")
     private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          IngestionApiKeyAuthenticationFilter ingestionApiKeyAuthenticationFilter) {
+                          IngestionApiKeyAuthenticationFilter ingestionApiKeyAuthenticationFilter,
+                          AuthRateLimitFilter authRateLimitFilter,
+                          @Value("${devpulse.api-docs.enabled:false}") boolean apiDocsEnabled) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.ingestionApiKeyAuthenticationFilter = ingestionApiKeyAuthenticationFilter;
+        this.authRateLimitFilter = authRateLimitFilter;
+        this.apiDocsEnabled = apiDocsEnabled;
     }
 
     @Bean
@@ -49,18 +56,18 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(Customizer.withDefaults())
             .headers(headers -> headers.frameOptions(frame -> frame.deny()))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers(
                     "/api/auth/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
                     "/actuator/health/**",
                     "/health",
                     "/ready"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
+                ).permitAll();
+                if (apiDocsEnabled) {
+                    auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
+                }
+                auth.anyRequest().authenticated();
+            })
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) ->
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required"))
@@ -68,6 +75,7 @@ public class SecurityConfig {
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied"))
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(ingestionApiKeyAuthenticationFilter, JwtAuthenticationFilter.class);
 
@@ -98,6 +106,14 @@ public class SecurityConfig {
     public FilterRegistrationBean<IngestionApiKeyAuthenticationFilter> disableApiKeyFilterServletRegistration() {
         FilterRegistrationBean<IngestionApiKeyAuthenticationFilter> registration =
                 new FilterRegistrationBean<>(ingestionApiKeyAuthenticationFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<AuthRateLimitFilter> disableAuthRateLimitFilterServletRegistration(
+            AuthRateLimitFilter filter) {
+        FilterRegistrationBean<AuthRateLimitFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }

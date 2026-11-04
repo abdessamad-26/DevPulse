@@ -8,6 +8,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.context.TestPropertySource;
+import jakarta.servlet.http.Cookie;
 
 import java.util.Map;
 import java.util.UUID;
@@ -25,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestPropertySource(properties = "devpulse.auth-rate-limit.enabled=false")
 class AuthFlowIntegrationTest {
 
     @Autowired
@@ -32,6 +35,12 @@ class AuthFlowIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Test
+    void shouldKeepApiDocsPrivateByDefault() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isUnauthorized());
+    }
 
     @Test
     void shouldRegisterLoginAndCreateProjectWithIssuedToken() throws Exception {
@@ -122,24 +131,58 @@ class AuthFlowIntegrationTest {
         String initialRefreshToken = login(email);
 
         MvcResult refreshResult = mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", initialRefreshToken))))
+                        .cookie(new Cookie("devpulse_refresh", initialRefreshToken)))
                 .andExpect(status().isOk())
                 .andReturn();
-        Map<?, ?> refreshResponse = objectMapper.readValue(
-                refreshResult.getResponse().getContentAsString(), Map.class);
-        String rotatedRefreshToken = (String) refreshResponse.get("refreshToken");
+        assertThat(refreshResult.getResponse().getContentAsString()).doesNotContain("refreshToken");
+        assertThat(refreshResult.getResponse().getHeader("Set-Cookie"))
+                .contains("HttpOnly", "Path=/api/auth", "SameSite=Lax");
+        String rotatedRefreshToken = refreshResult.getResponse().getCookie("devpulse_refresh").getValue();
         assertThat(rotatedRefreshToken).isNotBlank().isNotEqualTo(initialRefreshToken);
 
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", initialRefreshToken))))
+                        .cookie(new Cookie("devpulse_refresh", initialRefreshToken)))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", rotatedRefreshToken))))
+                        .cookie(new Cookie("devpulse_refresh", rotatedRefreshToken)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldNormalizeEmailAndRejectCaseInsensitiveDuplicate() throws Exception {
+        String email = "MixedCase-" + UUID.randomUUID() + "@example.com";
+        Map<String, String> body = Map.of(
+                "firstName", "Mixed",
+                "lastName", "Case",
+                "email", email,
+                "password", "correct-password"
+        );
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andExpect(result -> assertThat(result.getResponse().getContentAsString())
+                        .contains(email.toLowerCase(java.util.Locale.ROOT)));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "email", email.toLowerCase(java.util.Locale.ROOT),
+                                "password", "correct-password"))))
+                .andExpect(status().isOk());
+
+        Map<String, String> duplicate = Map.of(
+                "firstName", "Duplicate",
+                "lastName", "User",
+                "email", email.toUpperCase(java.util.Locale.ROOT),
+                "password", "another-password"
+        );
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(duplicate)))
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -149,13 +192,13 @@ class AuthFlowIntegrationTest {
         String refreshToken = login(email);
 
         mockMvc.perform(post("/api/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken))))
-                .andExpect(status().isNoContent());
+                        .cookie(new Cookie("devpulse_refresh", refreshToken)))
+                .andExpect(status().isNoContent())
+                .andExpect(result -> assertThat(result.getResponse().getHeader("Set-Cookie"))
+                        .contains("Max-Age=0", "HttpOnly", "Path=/api/auth"));
 
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("refreshToken", refreshToken))))
+                        .cookie(new Cookie("devpulse_refresh", refreshToken)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -180,6 +223,10 @@ class AuthFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         Map<?, ?> response = objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
-        return (String) response.get("refreshToken");
+        assertThat(response.containsKey("refreshToken")).isFalse();
+        assertThat(result.getResponse().getHeader("Set-Cookie"))
+                .contains("HttpOnly", "Path=/api/auth", "SameSite=Lax");
+        return result.getResponse().getCookie("devpulse_refresh").getValue();
     }
+
 }

@@ -10,6 +10,8 @@ class JwtPropertiesTest {
     private JwtProperties withSecret(String secret) {
         JwtProperties properties = new JwtProperties();
         properties.setSecret(secret);
+        properties.setAccessTokenTtlSeconds(3600L);
+        properties.setRefreshTokenTtlSeconds(604800L);
         return properties;
     }
 

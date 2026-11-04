@@ -17,7 +17,6 @@ const user: AuthResponse['user'] = {
 
 const refreshedSession: AuthResponse = {
   token: 'new-access-token',
-  refreshToken: 'new-refresh-token',
   user
 };
 
@@ -91,8 +90,7 @@ describe('authInterceptor', () => {
       .flush({}, { status: 500, statusText: 'Internal Server Error' });
 
     expect(failedStatus).toBe(500);
-    // The (rotated) session must still be stored: no logout happened.
-    const stored = JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null');
-    expect(stored?.refreshToken).toBe('new-refresh-token');
+    expect(JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null')?.token)
+      .toBe('new-access-token');
   });
 });

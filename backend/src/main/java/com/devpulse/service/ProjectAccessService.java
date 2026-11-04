@@ -10,6 +10,7 @@ import com.devpulse.repository.UserRepository;
 import com.devpulse.security.IngestionApiKeyPrincipal;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
@@ -34,8 +35,8 @@ public class ProjectAccessService {
     }
 
     public User resolveCurrentUser(Authentication authentication) {
-        return userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new ApiException("Authenticated user not found"));
+        return userRepository.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new ApiException("Authenticated user not found", HttpStatus.NOT_FOUND));
     }
 
     /**
@@ -45,7 +46,7 @@ public class ProjectAccessService {
      */
     public Project requireAccessibleProject(Long projectId, Authentication authentication) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ApiException("Project not found"));
+                .orElseThrow(() -> new ApiException("Project not found", HttpStatus.NOT_FOUND));
         User user = resolveCurrentUser(authentication);
 
         if (!isAdmin(user) && !isOwner(project, user) && findMembership(projectId, user) == null) {
@@ -57,7 +58,7 @@ public class ProjectAccessService {
 
     public Project requireWritableProject(Long projectId, Authentication authentication) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ApiException("Project not found"));
+                .orElseThrow(() -> new ApiException("Project not found", HttpStatus.NOT_FOUND));
         User user = resolveCurrentUser(authentication);
 
         if (isAdmin(user) || isOwner(project, user)) {
@@ -76,14 +77,14 @@ public class ProjectAccessService {
                 throw new AccessDeniedException("This ingestion API key is scoped to a different project");
             }
             return projectRepository.findById(projectId)
-                    .orElseThrow(() -> new ApiException("Project not found"));
+                    .orElseThrow(() -> new ApiException("Project not found", HttpStatus.NOT_FOUND));
         }
         return requireWritableProject(projectId, authentication);
     }
 
     public Project requireProjectManager(Long projectId, Authentication authentication) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ApiException("Project not found"));
+                .orElseThrow(() -> new ApiException("Project not found", HttpStatus.NOT_FOUND));
         User user = resolveCurrentUser(authentication);
 
         if (!isAdmin(user) && !isOwner(project, user)) {

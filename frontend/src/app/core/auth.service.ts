@@ -8,14 +8,22 @@ const STORAGE_KEY = 'devpulse.session';
 
 interface Session {
   token: string;
-  refreshToken: string;
   user: User;
 }
 
 function readSession(): Session | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
+    if (!raw) {
+      return null;
+    }
+
+    const stored = JSON.parse(raw) as Session & { refreshToken?: string };
+    const session: Session = { token: stored.token, user: stored.user };
+    if (stored.refreshToken) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    }
+    return session;
   } catch {
     return null;
   }
@@ -45,13 +53,12 @@ export class AuthService {
       return this.refreshRequest;
     }
 
-    const refreshToken = this.session()?.refreshToken;
-    if (!refreshToken) {
+    if (!this.session()) {
       this.logout();
       return throwError(() => new Error('No refresh token available'));
     }
 
-    const request = this.http.post<AuthResponse>('/api/auth/refresh', { refreshToken }).pipe(
+    const request = this.http.post<AuthResponse>('/api/auth/refresh', null, { withCredentials: true }).pipe(
       tap((res) => this.store(res)),
       catchError((error) => {
         this.logout();
@@ -67,7 +74,7 @@ export class AuthService {
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>('/api/auth/login', { email, password }).pipe(
+    return this.http.post<AuthResponse>('/api/auth/login', { email, password }, { withCredentials: true }).pipe(
       tap((res) => this.store(res))
     );
   }
@@ -82,15 +89,15 @@ export class AuthService {
   }
 
   logout(): void {
-    const refreshToken = this.session()?.refreshToken;
+    const hadSession = this.session() !== null;
     this.session.set(null);
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       // storage unavailable: nothing to clean
     }
-    if (refreshToken) {
-      this.http.post<void>('/api/auth/logout', { refreshToken }).subscribe({
+    if (hadSession) {
+      this.http.post<void>('/api/auth/logout', null, { withCredentials: true }).subscribe({
         error: () => console.warn('Could not revoke the refresh token on the server.')
       });
     }
@@ -110,7 +117,7 @@ export class AuthService {
   }
 
   private store(res: AuthResponse): void {
-    const session: Session = { token: res.token, refreshToken: res.refreshToken, user: res.user };
+    const session: Session = { token: res.token, user: res.user };
     this.session.set(session);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));

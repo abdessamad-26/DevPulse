@@ -11,11 +11,12 @@ import com.devpulse.exception.ApiException;
 import com.devpulse.repository.RefreshTokenRepository;
 import com.devpulse.repository.RoleRepository;
 import com.devpulse.repository.UserRepository;
-import org.springframework.http.HttpStatus;
+import com.devpulse.util.EmailAddress;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,15 +57,16 @@ public class AuthService {
 
     @Transactional
     public User register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ApiException("Email already exists");
+        String email = EmailAddress.normalize(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ApiException("Email already exists", HttpStatus.CONFLICT);
         }
 
         Role role = roleRepository.findByName("DEVELOPER")
                 .orElseThrow(() -> new ApiException("Default role DEVELOPER is not configured"));
 
         User user = new User();
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
@@ -77,14 +79,15 @@ public class AuthService {
     public AuthResponse authenticate(AuthRequest request) {
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                    new UsernamePasswordAuthenticationToken(
+                            EmailAddress.normalize(request.getEmail()), request.getPassword()));
         } catch (AuthenticationException ex) {
             // Covers bad credentials AND disabled/locked accounts (previously a 500),
             // without revealing which one it was.
             throw new ApiException("Invalid credentials", HttpStatus.UNAUTHORIZED);
         }
 
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmailIgnoreCase(EmailAddress.normalize(request.getEmail()))
                 .orElseThrow(() -> new ApiException("Invalid credentials"));
 
         String refreshToken = issueRefreshToken(user, UUID.randomUUID());
@@ -114,7 +117,7 @@ public class AuthService {
         }
 
         String email = jwtService.extractUsername(refreshToken);
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailIgnoreCase(EmailAddress.normalize(email))
                 .orElseThrow(() -> new ApiException("User not found"));
         if (!user.isEnabled() || !user.getId().equals(storedToken.getUser().getId())) {
             throw new ApiException("Invalid or expired refresh token");

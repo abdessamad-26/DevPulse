@@ -23,8 +23,8 @@ public class JwtProperties {
     );
 
     private String secret;
-    private long expiration;
-    private long refreshExpiration;
+    private long accessTokenTtlSeconds;
+    private long refreshTokenTtlSeconds;
 
     /**
      * Fail fast at startup: a missing, short or publicly known signing secret
@@ -46,6 +46,9 @@ public class JwtProperties {
             throw new IllegalStateException(
                     "JWT_SECRET uses a publicly known placeholder value. Generate a new random secret.");
         }
+        if (accessTokenTtlSeconds <= 0 || refreshTokenTtlSeconds <= 0) {
+            throw new IllegalStateException("JWT token TTL values must be greater than zero seconds.");
+        }
     }
 
     // Explicit getters in case Lombok annotation processing is not available
@@ -53,23 +56,23 @@ public class JwtProperties {
         return secret;
     }
 
-    public long getExpiration() {
-        return expiration;
+    public long getAccessTokenTtlSeconds() {
+        return accessTokenTtlSeconds;
     }
 
-    public long getRefreshExpiration() {
-        return refreshExpiration;
+    public long getRefreshTokenTtlSeconds() {
+        return refreshTokenTtlSeconds;
     }
 
     public void setSecret(String secret) {
         this.secret = secret;
     }
 
-    public void setExpiration(long expiration) {
-        this.expiration = expiration;
+    public void setAccessTokenTtlSeconds(long accessTokenTtlSeconds) {
+        this.accessTokenTtlSeconds = accessTokenTtlSeconds;
     }
 
-    public void setRefreshExpiration(long refreshExpiration) {
-        this.refreshExpiration = refreshExpiration;
+    public void setRefreshTokenTtlSeconds(long refreshTokenTtlSeconds) {
+        this.refreshTokenTtlSeconds = refreshTokenTtlSeconds;
     }
 }

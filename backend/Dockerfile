@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for backend
-FROM maven:3.9.9-eclipse-temurin-25 AS build
+FROM maven:3.10.0-eclipse-temurin-25-noble AS build
 WORKDIR /workspace
 COPY pom.xml ./
 COPY src ./src
@@ -7,7 +7,7 @@ COPY src ./src
 # so a code change no longer re-downloads the whole dependency tree.
 RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests package
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \

@@ -11,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,10 +28,11 @@ public class LogService {
         this.projectAccessService = projectAccessService;
     }
 
+    @Transactional
     public List<LogEntry> ingest(Long projectId, Authentication authentication, LogIngestRequest request) {
         Project project = projectAccessService.requireIngestionProject(projectId, authentication);
 
-        return request.getEntries().stream().map(entry -> {
+        List<LogEntry> logs = request.getEntries().stream().map(entry -> {
             LogEntry log = new LogEntry();
             log.setProject(project);
             log.setServiceName(entry.getServiceName());
@@ -40,8 +42,9 @@ public class LogService {
             if (entry.getTimestamp() != null) {
                 log.setTimestamp(entry.getTimestamp());
             }
-            return logRepository.save(log);
+            return log;
         }).toList();
+        return logRepository.saveAll(logs);
     }
 
     public Page<LogEntry> search(Long projectId, Authentication authentication, String service, String environment,

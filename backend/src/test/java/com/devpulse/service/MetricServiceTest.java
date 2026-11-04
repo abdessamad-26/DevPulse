@@ -44,7 +44,7 @@ class MetricServiceTest {
         Project project = new Project();
         project.setId(1L);
         when(projectAccessService.requireIngestionProject(1L, authentication)).thenReturn(project);
-        when(metricRepository.save(any(Metric.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(metricRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         MetricIngestRequest.Point point = new MetricIngestRequest.Point();
         point.setMetricName("cpu_usage_percent");

@@ -90,8 +90,8 @@ public class IngestionApiKeyService {
         if (apiKey == null) {
             return null;
         }
-        apiKey.setLastUsedAt(LocalDateTime.now());
-        apiKeyRepository.save(apiKey);
+        LocalDateTime now = LocalDateTime.now();
+        apiKeyRepository.updateLastUsedAtIfStale(apiKey.getId(), now.minusMinutes(5), now);
         return new IngestionApiKeyPrincipal(apiKey.getId(), apiKey.getProject().getId(), apiKey.getName());
     }
 

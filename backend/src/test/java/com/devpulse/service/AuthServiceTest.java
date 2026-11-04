@@ -77,7 +77,7 @@ class AuthServiceTest {
         role.setName("DEVELOPER");
 
         when(roleRepository.findByName("DEVELOPER")).thenReturn(Optional.of(role));
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(false);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User saved = authService.register(request);
@@ -93,7 +93,7 @@ class AuthServiceTest {
         request.setEmail("alice@example.com");
         request.setPassword("secret123");
 
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(ApiException.class)
@@ -106,7 +106,7 @@ class AuthServiceTest {
         request.setEmail("alice@example.com");
         request.setPassword("secret123");
 
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(false);
         when(roleRepository.findByName("DEVELOPER")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.register(request))
@@ -125,7 +125,7 @@ class AuthServiceTest {
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(new UsernamePasswordAuthenticationToken("bob@example.com", "secret123"));
-        when(userRepository.findByEmail("bob@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("bob@example.com")).thenReturn(Optional.of(user));
         when(jwtService.generateToken("bob@example.com", "ADMIN")).thenReturn("access-token");
         when(jwtService.generateRefreshToken("bob@example.com")).thenReturn("refresh-token");
         when(jwtService.extractExpiration("refresh-token"))
@@ -165,7 +165,7 @@ class AuthServiceTest {
 
         when(jwtService.isRefreshTokenValid("valid-refresh-token")).thenReturn(true);
         when(jwtService.extractUsername("valid-refresh-token")).thenReturn("carol@example.com");
-        when(userRepository.findByEmail("carol@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("carol@example.com")).thenReturn(Optional.of(user));
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(storedToken));
         when(refreshTokenRepository.revokeIfActive(any(), any())).thenReturn(1);
         when(jwtService.generateRefreshToken("carol@example.com")).thenReturn("rotated-refresh-token");

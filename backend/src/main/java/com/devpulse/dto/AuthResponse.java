@@ -1,5 +1,7 @@
 package com.devpulse.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class AuthResponse {
     private String token;
     private String refreshToken;
@@ -21,6 +23,7 @@ public class AuthResponse {
         this.token = token;
     }
 
+    @JsonIgnore
     public String getRefreshToken() {
         return refreshToken;
     }

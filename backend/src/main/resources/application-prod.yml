@@ -17,3 +17,6 @@ devpulse:
     enabled: ${DEMO_MODE:false}
   chaos:
     allow-production: ${CHAOS_ALLOW_PRODUCTION:false}
+  auth:
+    refresh-cookie:
+      secure: ${AUTH_REFRESH_COOKIE_SECURE:true}

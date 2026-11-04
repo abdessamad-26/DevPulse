@@ -30,7 +30,8 @@ public class JwtService {
                 .subject(email)
                 .claim(CLAIM_TYPE, TYPE_ACCESS)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration()));
+                .expiration(new Date(System.currentTimeMillis()
+                        + Math.multiplyExact(jwtProperties.getAccessTokenTtlSeconds(), 1000L)));
 
         if (role != null && !role.isBlank()) {
             builder.claim("role", role);
@@ -45,7 +46,8 @@ public class JwtService {
                 .id(java.util.UUID.randomUUID().toString())
                 .claim(CLAIM_TYPE, TYPE_REFRESH)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + jwtProperties.getRefreshExpiration()))
+                .expiration(new Date(System.currentTimeMillis()
+                        + Math.multiplyExact(jwtProperties.getRefreshTokenTtlSeconds(), 1000L)))
                 .signWith(getSigningKey())
                 .compact();
     }

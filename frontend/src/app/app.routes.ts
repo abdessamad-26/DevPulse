@@ -14,6 +14,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent) },
       { path: 'projects', loadComponent: () => import('./pages/projects/projects.component').then((m) => m.ProjectsComponent) },
+      { path: 'access', loadComponent: () => import('./pages/access/access.component').then((m) => m.AccessComponent) },
       { path: 'services', loadComponent: () => import('./pages/services/services.component').then((m) => m.ServicesComponent) },
       { path: 'incidents', loadComponent: () => import('./pages/incidents/incidents.component').then((m) => m.IncidentsComponent) },
       { path: 'metrics', loadComponent: () => import('./pages/metrics/metrics.component').then((m) => m.MetricsComponent) },

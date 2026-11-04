@@ -9,6 +9,7 @@ import com.devpulse.entity.User;
 import com.devpulse.exception.ApiException;
 import com.devpulse.repository.ProjectMemberRepository;
 import com.devpulse.repository.UserRepository;
+import com.devpulse.util.EmailAddress;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -50,7 +51,7 @@ public class ProjectMembershipService {
     public ProjectMemberResponse addMember(Long projectId, Authentication authentication,
                                            ProjectMemberRequest request) {
         Project project = projectAccessService.requireProjectManager(projectId, authentication);
-        User user = userRepository.findByEmail(request.email().trim())
+        User user = userRepository.findByEmailIgnoreCase(EmailAddress.normalize(request.email()))
                 .orElseThrow(() -> new ApiException("User not found", HttpStatus.NOT_FOUND));
 
         if (project.getOwner().getId().equals(user.getId())) {

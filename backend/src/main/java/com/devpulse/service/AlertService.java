@@ -30,7 +30,7 @@ public class AlertService {
 
     public Alert acknowledge(Long alertId, Authentication authentication) {
         Alert alert = alertRepository.findById(alertId)
-                .orElseThrow(() -> new ApiException("Alert not found"));
+                .orElseThrow(() -> new ApiException("Alert not found", HttpStatus.NOT_FOUND));
 
         Long projectId = alert.getAlertRule().getProject() != null
                 ? alert.getAlertRule().getProject().getId()

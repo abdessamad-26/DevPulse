@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,14 +29,11 @@ public class MetricService {
         this.alertEvaluationService = alertEvaluationService;
     }
 
-    /**
-     * Persists every point in the batch and evaluates alert rules against
-     * each one as it is ingested (see {@link AlertEvaluationService}).
-     */
+    @Transactional
     public List<Metric> ingest(Long projectId, Authentication authentication, MetricIngestRequest request) {
         Project project = projectAccessService.requireIngestionProject(projectId, authentication);
 
-        return request.getPoints().stream().map(point -> {
+        List<Metric> metrics = request.getPoints().stream().map(point -> {
             Metric metric = new Metric();
             metric.setProject(project);
             metric.setServiceName(point.getServiceName());
@@ -45,10 +43,11 @@ public class MetricService {
             if (point.getCapturedAt() != null) {
                 metric.setCapturedAt(point.getCapturedAt());
             }
-            Metric saved = metricRepository.save(metric);
-            alertEvaluationService.evaluate(saved);
-            return saved;
+            return metric;
         }).toList();
+        List<Metric> savedMetrics = metricRepository.saveAll(metrics);
+        savedMetrics.forEach(alertEvaluationService::evaluate);
+        return savedMetrics;
     }
 
     public Page<Metric> query(Long projectId, Authentication authentication, String metricName,

@@ -70,7 +70,7 @@ public class DemoDataSeeder implements CommandLineRunner {
         if (!demoEnabled) {
             return;
         }
-        if (userRepository.existsByEmail(DEMO_EMAIL)) {
+        if (userRepository.existsByEmailIgnoreCase(DEMO_EMAIL)) {
             return;
         }
 

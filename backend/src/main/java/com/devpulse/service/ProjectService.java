@@ -7,6 +7,7 @@ import com.devpulse.exception.ApiException;
 import com.devpulse.repository.ProjectRepository;
 import com.devpulse.repository.UserRepository;
 import com.devpulse.util.PageRequestSupport;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
@@ -25,7 +26,7 @@ public class ProjectService {
 
     public Project createProject(Long userId, ProjectRequest request) {
         User owner = userRepository.findById(userId)
-                .orElseThrow(() -> new ApiException("User not found"));
+                .orElseThrow(() -> new ApiException("User not found", HttpStatus.NOT_FOUND));
 
         Project project = new Project();
         project.setName(request.getName());

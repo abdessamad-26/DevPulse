@@ -26,19 +26,20 @@
 - Self-service profile/password APIs and admin account controls are implemented
   with server-side authorization, session revocation, audit events, and
   safeguards for the current and last active administrator.
-- Integration coverage for these API flows now passes in `mvn clean verify`: **92 tests passed, 0 failures/errors** on Oracle JDK 26.0.1 (Java release target 25).
+- Integration coverage for these API flows now passes in `mvn clean verify`: **96 tests passed, 0 failures/errors** on Oracle JDK 26.0.1 (Java release target 25).
 
 ## Required before a production release
 
-- [ ] Run Docker image builds and verify container startup; the local Docker
-  daemon was unavailable during this work.
-- [ ] Run Flyway against a fresh PostgreSQL database and an existing database,
-  then verify schema validation and restart behavior.
+- [x] Build all Docker images and start an isolated Compose stack; all four
+  services reached healthy status.
+- [x] Run Flyway against a fresh PostgreSQL database; migration V11 succeeded
+  and the backend remained healthy after restart.
+- [ ] Verify Flyway schema validation against an existing PostgreSQL database.
 - [ ] Run the full CI workflow in GitHub Actions and review all required jobs,
   including image scans.
 - [ ] Add/run end-to-end tests for critical user journeys and the Java-Python
   service contract; no browser E2E suite was verified here.
-- [x] Run backend `mvn clean verify` for the account/admin APIs and added integration tests: **92 tests passed, 0 failures/errors**; build and package verification succeeded.
+- [x] Run backend `mvn clean verify` with the remaining auth hardening: **96 tests passed, 0 failures/errors**; build and package verification succeeded.
 - [ ] Add an invitation flow if the product needs inviting people who do not yet have accounts.
 - [ ] Decide whether Prometheus/Grafana/Loki deployment is required or update
   architecture expectations; these services are not present in Compose.
@@ -51,9 +52,9 @@
 
 ## Release verdict
 
-**Not ready for production yet.** Backend verification now passes, including
-the new account/admin APIs; the frontend tests/build also pass.
-Docker/PostgreSQL/Flyway behavior, full-system E2E, target-environment CI,
+**Not ready for production yet.** Backend and Docker builds pass, and the
+fresh PostgreSQL database applies all migrations successfully. Existing
+database migration validation, full-system E2E, target-environment CI,
 monitoring deployment, and some product workflows remain unverified or
 incomplete. Do not deploy until the unchecked release-blocking items above are
 resolved and reviewed.

@@ -22,8 +22,8 @@ class JwtServiceTest {
     void setUp() {
         JwtProperties properties = new JwtProperties();
         properties.setSecret(SECRET);
-        properties.setExpiration(3600000L);
-        properties.setRefreshExpiration(604800000L);
+        properties.setAccessTokenTtlSeconds(3600L);
+        properties.setRefreshTokenTtlSeconds(604800L);
         jwtService = new JwtService(properties);
     }
 
@@ -95,8 +95,8 @@ class JwtServiceTest {
     void shouldRejectTokenSignedWithDifferentSecret() {
         JwtProperties otherProperties = new JwtProperties();
         otherProperties.setSecret("a-completely-different-secret-key-32-bytes-plus");
-        otherProperties.setExpiration(3600000L);
-        otherProperties.setRefreshExpiration(604800000L);
+        otherProperties.setAccessTokenTtlSeconds(3600L);
+        otherProperties.setRefreshTokenTtlSeconds(604800L);
         JwtService otherService = new JwtService(otherProperties);
 
         String token = otherService.generateToken("alice@example.com", "ADMIN");

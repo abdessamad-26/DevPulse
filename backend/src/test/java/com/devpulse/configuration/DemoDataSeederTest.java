@@ -46,7 +46,7 @@ class DemoDataSeederTest {
 
     @Test
     void shouldSkipSeedingWhenDemoUserAlreadyExists() {
-        when(userRepository.existsByEmail("demo@devpulse.local")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("demo@devpulse.local")).thenReturn(true);
 
         seeder(true).run();
 
@@ -56,7 +56,7 @@ class DemoDataSeederTest {
 
     @Test
     void shouldSeedFullDemoDatasetWhenEnabledAndNotYetSeeded() {
-        when(userRepository.existsByEmail("demo@devpulse.local")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("demo@devpulse.local")).thenReturn(false);
 
         Role developerRole = new Role();
         developerRole.setName("DEVELOPER");

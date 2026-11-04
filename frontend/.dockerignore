@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .angular/
+src/**/*.js
+*.tsbuildinfo
 .vscode/
 .env
 .env.*

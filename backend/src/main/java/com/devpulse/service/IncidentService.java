@@ -63,7 +63,7 @@ public class IncidentService {
         if (request.getServiceId() != null) {
             serviceRef = serviceRepository.findById(request.getServiceId())
                     .filter(s -> s.getProject().getId().equals(project.getId()))
-                    .orElseThrow(() -> new ApiException("Service not found in this project"));
+                    .orElseThrow(() -> new ApiException("Service not found in this project", HttpStatus.NOT_FOUND));
         }
 
         Incident incident = new Incident();
@@ -87,7 +87,7 @@ public class IncidentService {
 
     public Incident updateIncident(Long incidentId, Authentication authentication, IncidentUpdateRequest request) {
         Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new ApiException("Incident not found"));
+                .orElseThrow(() -> new ApiException("Incident not found", HttpStatus.NOT_FOUND));
 
         if (incident.getProject() != null) {
             projectAccessService.requireWritableProject(incident.getProject().getId(), authentication);

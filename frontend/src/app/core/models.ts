@@ -19,7 +19,6 @@ export interface AdminUser extends User {
 
 export interface AuthResponse {
   token: string;
-  refreshToken: string;
   user: User;
 }
 
@@ -56,6 +55,38 @@ export interface ProjectPayload {
   description?: string;
   repository?: string;
   environment: string;
+}
+
+export interface ProjectMember {
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  joinedAt: string;
+}
+
+export interface IngestionKey {
+  id: number;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface CreatedIngestionKey extends IngestionKey {
+  key: string;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  projectId: number | null;
+  actorUserId: number | null;
+  action: string;
+  entityType: string | null;
+  entityId: number | null;
+  details: string | null;
+  createdAt: string;
 }
 
 export interface ServiceItem {

@@ -7,12 +7,15 @@ import {
   AlertRulePayload,
   AdminUser,
   ChangePasswordPayload,
+  AuditLogEntry,
   ChaosSimulation,
+  CreatedIngestionKey,
   Deployment,
   DeploymentPayload,
   Incident,
   IncidentCreatePayload,
   IncidentDeploymentCorrelation,
+  IngestionKey,
   LogEntry,
   LogFilters,
   MetricIngestPoint,
@@ -20,9 +23,10 @@ import {
   Page,
   ProfileUpdatePayload,
   Project,
+  ProjectMember,
   ProjectPayload,
-  User,
   ServiceItem,
+  User,
 } from './models';
 
 /** Thin typed client over the DevPulse REST API (all paths relative, proxied in dev and in nginx). */
@@ -41,7 +45,7 @@ export class ApiService {
     return this.http.get<Page<AdminUser>>('/api/admin/users', { params: this.pageParams(page, size) });
   }
   updateAdminUser(userId: number, body: { role: 'ADMIN' | 'DEVELOPER' | 'VIEWER'; enabled: boolean }): Observable<AdminUser> {
-    return this.http.patch<AdminUser>('/api/admin/users/' + userId, body);
+    return this.http.patch<AdminUser>(`/api/admin/users/${userId}`, body);
   }
 
   // Projects
@@ -50,6 +54,37 @@ export class ApiService {
   }
   createProject(body: ProjectPayload): Observable<Project> {
     return this.http.post<Project>('/api/projects', body);
+  }
+
+  // Project access management
+  projectMembers(projectId: number): Observable<ProjectMember[]> {
+    return this.http.get<ProjectMember[]>(`/api/projects/${projectId}/members`);
+  }
+  addProjectMember(projectId: number, body: { email: string; role: 'DEVELOPER' | 'VIEWER' }): Observable<ProjectMember> {
+    return this.http.post<ProjectMember>(`/api/projects/${projectId}/members`, body);
+  }
+  updateProjectMemberRole(projectId: number, userId: number, role: 'DEVELOPER' | 'VIEWER'): Observable<ProjectMember> {
+    return this.http.put<ProjectMember>(`/api/projects/${projectId}/members/${userId}`, { role });
+  }
+  removeProjectMember(projectId: number, userId: number): Observable<void> {
+    return this.http.delete<void>(`/api/projects/${projectId}/members/${userId}`);
+  }
+  ingestionKeys(projectId: number): Observable<IngestionKey[]> {
+    return this.http.get<IngestionKey[]>(`/api/projects/${projectId}/ingestion-keys`);
+  }
+  createIngestionKey(projectId: number, name: string): Observable<CreatedIngestionKey> {
+    return this.http.post<CreatedIngestionKey>(`/api/projects/${projectId}/ingestion-keys`, { name });
+  }
+  revokeIngestionKey(projectId: number, keyId: number): Observable<void> {
+    return this.http.delete<void>(`/api/projects/${projectId}/ingestion-keys/${keyId}`);
+  }
+  projectAuditLogs(projectId: number, page = 0, size = 100): Observable<Page<AuditLogEntry>> {
+    return this.http.get<Page<AuditLogEntry>>(`/api/projects/${projectId}/audit-logs`, {
+      params: this.pageParams(page, size),
+    });
+  }
+  globalAuditLogs(page = 0, size = 100): Observable<Page<AuditLogEntry>> {
+    return this.http.get<Page<AuditLogEntry>>('/api/audit-logs', { params: this.pageParams(page, size) });
   }
 
   // Services

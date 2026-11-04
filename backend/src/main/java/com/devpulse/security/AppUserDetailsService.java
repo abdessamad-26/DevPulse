@@ -1,6 +1,7 @@
 package com.devpulse.security;
 
 import com.devpulse.repository.UserRepository;
+import com.devpulse.util.EmailAddress;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -17,7 +18,7 @@ public class AppUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailIgnoreCase(EmailAddress.normalize(email))
                 .map(user -> org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
                         .password(user.getPassword())
                         .roles(user.getRole() != null ? user.getRole().getName() : "DEVELOPER")

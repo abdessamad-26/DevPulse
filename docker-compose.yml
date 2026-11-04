@@ -36,6 +36,11 @@ services:
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       # No default on purpose: the backend refuses to start without a strong secret.
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required - copy .env.example to .env (or run scripts/dev.ps1)}
+      AUTH_RATE_LIMIT_ENABLED: ${AUTH_RATE_LIMIT_ENABLED:-true}
+      # nginx overwrites X-Real-IP with the originating client address.
+      AUTH_RATE_LIMIT_TRUST_PROXY_HEADER: "true"
+      AUTH_REFRESH_COOKIE_SECURE: ${AUTH_REFRESH_COOKIE_SECURE:-true}
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -43,7 +48,7 @@ services:
       retries: 12
       start_period: 45s
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy

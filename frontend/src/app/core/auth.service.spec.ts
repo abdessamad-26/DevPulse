@@ -41,18 +41,40 @@ describe('AuthService', () => {
 
     const request = httpTesting.expectOne('/api/auth/refresh');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ refreshToken: 'refresh-token' });
+    expect(request.request.body).toBeNull();
+    expect(request.request.withCredentials).toBe(true);
 
     const response: AuthResponse = {
       token: 'rotated-access-token',
-      refreshToken: 'rotated-refresh-token',
       user: { id: 1, email: 'user@example.com', firstName: 'Test', lastName: 'User', role: 'DEVELOPER' }
     };
     request.flush(response);
 
     expect(firstResults).toEqual([response]);
     expect(secondResults).toEqual([response]);
-    expect(JSON.parse(localStorage.getItem('devpulse.session') ?? '{}').refreshToken)
-      .toBe('rotated-refresh-token');
+    expect(JSON.parse(localStorage.getItem('devpulse.session') ?? '{}'))
+      .toEqual({ token: 'rotated-access-token', user: response.user });
+  });
+
+  it('sends login credentials with cookies enabled and does not persist a refresh token', () => {
+    authService.login('user@example.com', 'password').subscribe();
+
+    const request = httpTesting.expectOne('/api/auth/login');
+    expect(request.request.withCredentials).toBe(true);
+    request.flush({
+      token: 'new-access-token',
+      user: { id: 1, email: 'user@example.com', firstName: 'Test', lastName: 'User', role: 'DEVELOPER' }
+    });
+
+    expect(JSON.parse(localStorage.getItem('devpulse.session') ?? '{}'))
+      .not.toHaveProperty('refreshToken');
+  });
+
+  it('removes an existing refresh token from the persisted session', () => {
+    expect(JSON.parse(localStorage.getItem('devpulse.session') ?? '{}'))
+      .toEqual({
+        token: 'access-token',
+        user: { id: 1, email: 'user@example.com', firstName: 'Test', lastName: 'User', role: 'DEVELOPER' }
+      });
   });
 });
