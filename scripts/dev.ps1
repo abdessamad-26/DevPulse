@@ -28,7 +28,7 @@ if (-not (Test-Path $envFile)) {
 
 Write-Host "Starting DevPulse local environment with Docker Compose..."
 Push-Location $root
-docker compose up -d --build
-Start-Sleep -Seconds 10
+docker compose up --build -d --wait --wait-timeout 300
+Write-Host "All Compose services reported healthy."
 Write-Host "To run backend locally without containers: cd backend; set JWT_SECRET (see .env), then mvn -DskipTests spring-boot:run"
 Pop-Location
