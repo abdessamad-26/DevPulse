@@ -10,7 +10,7 @@ if [ ! -f .env ]; then
   SECRET="$(openssl rand -base64 48 | tr -d '\n')"
   # '|' as sed delimiter: base64 can contain '/'
   sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=${SECRET}|" .env
-  GRAFANA_SECRET="$(openssl rand -base64 36 | tr -d '\\n')"
+  GRAFANA_SECRET="$(openssl rand -base64 36 | tr -d '\n')"
   sed -i.bak "s|^GRAFANA_ADMIN_PASSWORD=.*|GRAFANA_ADMIN_PASSWORD=${GRAFANA_SECRET}|" .env
   sed -i.bak "s|^DEMO_MODE=.*|DEMO_MODE=true|" .env   # local machine only: enables the demo account
   rm -f .env.bak
