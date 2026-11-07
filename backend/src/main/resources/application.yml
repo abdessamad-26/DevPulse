@@ -1,4 +1,7 @@
 spring:
+  http:
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: devpulse-backend
   # Defaults support lightweight local runs; Compose selects the production profile for PostgreSQL.
