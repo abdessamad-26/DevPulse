@@ -81,7 +81,9 @@ test('a team member can ingest a metric, trigger an alert, and analyze an incide
   if (!response.ok()) {
     throw new Error(`Incident analysis failed with HTTP ${response.status()}: ${await response.text()}`);
   }
-  const analyzedIncident = await response.json() as { rootCause?: string; recommendations?: string };
-  expect(analyzedIncident.rootCause?.trim()).toBeTruthy();
-  await expect(incidentRow).toContainText(analyzedIncident.rootCause!);
+  // The component updates the incident row from the API response. Do not read
+  // the response body after Angular has re-rendered the row: Chromium may have
+  // already detached that response from the page's network context.
+  await expect(incidentRow.locator('td').nth(3)).not.toHaveText('—', { timeout: 10_000 });
+  await expect(incidentRow.locator('td').nth(3)).not.toBeEmpty();
 });
