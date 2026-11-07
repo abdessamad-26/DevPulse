@@ -42,12 +42,14 @@ On macOS or Linux:
 cp .env.example .env
 ```
 
-Edit `.env` and set a strong, unique `DB_PASSWORD` and `JWT_SECRET` (at least 32 characters), then run:
+Edit `.env` and set a strong, unique `DB_PASSWORD` and `JWT_SECRET` (at least 32 characters), and set GRAFANA_ADMIN_PASSWORD to a strong, unique value, then run:
 
 ```sh
-docker compose up -d --build
+docker compose up --build -d --wait --wait-timeout 300
 docker compose ps
 ```
+
+Grafana is available at http://localhost:3001 and Prometheus at http://localhost:9090. Grafana's default username is admin; use the password from your private .env file. The provisioned dashboard is in the DevPulse folder. Both web interfaces are bound to loopback only.
 
 Compose uses the Spring `prod` profile with PostgreSQL and Flyway migrations by default. Override `SPRING_PROFILES_ACTIVE` only when you intentionally want another profile. Health status is visible with `docker compose ps`.
 
