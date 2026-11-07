@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 # `npm ci` installs exactly what package-lock.json pins (reproducible, same as CI).
