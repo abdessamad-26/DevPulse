@@ -19,9 +19,8 @@ fi
 
 echo "Starting DevPulse local environment with Docker Compose..."
 
-docker compose up -d --build
+docker compose up --build -d --wait --wait-timeout 300
 
-echo "Waiting for backend to be healthy (approx 10s)"
-sleep 10
+echo "All Compose services reported healthy."
 
 printf 'To run backend locally without containers:\n  cd backend && export JWT_SECRET=... (see .env) && mvn -DskipTests spring-boot:run\n'
