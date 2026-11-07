@@ -1,7 +1,4 @@
 spring:
-  http:
-    converters:
-      preferred-json-mapper: jackson2
   application:
     name: devpulse-backend
   # Defaults support lightweight local runs; Compose selects the production profile for PostgreSQL.
@@ -25,6 +22,8 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
   http:
+    converters:
+      preferred-json-mapper: jackson2
     client:
       # Outbound calls (e.g. to the AI service) must never block a request thread forever.
       connect-timeout: ${HTTP_CLIENT_CONNECT_TIMEOUT:2s}
