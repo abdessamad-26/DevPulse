@@ -60,6 +60,8 @@ public class SecurityConfig {
                 auth.requestMatchers(
                     "/api/auth/**",
                     "/actuator/health/**",
+                    // Prometheus is reachable only on the private Compose/Kubernetes network.
+                    "/actuator/prometheus",
                     "/health",
                     "/ready"
                 ).permitAll();
