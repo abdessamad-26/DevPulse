@@ -14,6 +14,10 @@ This is a focused review of the operational changes and remaining deployment ris
 
 ## Security review and remaining work
 
+### Dependency security
+
+The previous CI scan failed on the Spring Boot 3.5.12 dependency tree, including a critical Spring MVC advisory and outdated Spring Data / Framework dependencies. The application has been moved to Spring Boot 4.1.2 and springdoc-openapi 3.2.0. This is a major-version migration and must be accepted only after the complete backend test suite, live-stack browser test and Trivy scan pass. Do not suppress remaining findings just to make CI green.
+
 ### Actuator and Prometheus
 
 The Prometheus scrape endpoint is unauthenticated so Prometheus can scrape it without application credentials. It must remain private to the Compose network or Kubernetes cluster network. Compose publishes only loopback-bound ports. In Kubernetes, add a NetworkPolicy that allows scrape access only from the Prometheus namespace/workload before deploying a Prometheus instance; do not publish the backend actuator endpoint through an Ingress.
