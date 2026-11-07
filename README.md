@@ -11,7 +11,7 @@ DevPulse is a local-first observability and incident-management application. It 
 - Self-service profile/password changes and global user administration for `ADMIN` users.
 - Docker Compose development stack with PostgreSQL, backend, AI service, and frontend.
 
-The project is under active development. The backend includes project membership, project-scoped ingestion keys, server-side refresh-token rotation/revocation, paged audit-log APIs, and duration-aware alert evaluation. Live infrastructure chaos experiments and production monitoring dashboards are not implemented yet. See [docs/api.md](docs/api.md) for the current API and its limitations.
+The project is under active development. The backend includes project membership, project-scoped ingestion keys, server-side refresh-token rotation/revocation, paged audit-log APIs, and duration-aware alert evaluation. Live infrastructure chaos experiments are not implemented. A starter Grafana dashboard for backend health and service metrics is provisioned for the local Compose stack; it is not a production monitoring deployment. See [docs/api.md](docs/api.md) for the current API and its limitations.
 
 ## Architecture
 
