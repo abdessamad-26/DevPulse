@@ -13,6 +13,7 @@ if (-not (Test-Path $envFile)) {
     $secret = [Convert]::ToBase64String($bytes)
     $lines = Get-Content $envFile | ForEach-Object {
         if ($_ -match '^JWT_SECRET=') { "JWT_SECRET=$secret" }
+        elseif ($_ -match '^GRAFANA_ADMIN_PASSWORD=') { "GRAFANA_ADMIN_PASSWORD=$([Convert]::ToBase64String($bytes))" }
         elseif ($_ -match '^DEMO_MODE=') { "DEMO_MODE=true" }   # local machine only: enables the demo account
         else { $_ }
     }
