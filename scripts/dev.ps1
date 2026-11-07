@@ -11,9 +11,14 @@ if (-not (Test-Path $envFile)) {
     $rng.GetBytes($bytes)
     $rng.Dispose()
     $secret = [Convert]::ToBase64String($bytes)
+    $grafanaBytes = New-Object byte[] 36
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($grafanaBytes)
+    $rng.Dispose()
+    $grafanaSecret = [Convert]::ToBase64String($grafanaBytes)
     $lines = Get-Content $envFile | ForEach-Object {
         if ($_ -match '^JWT_SECRET=') { "JWT_SECRET=$secret" }
-        elseif ($_ -match '^GRAFANA_ADMIN_PASSWORD=') { "GRAFANA_ADMIN_PASSWORD=$([Convert]::ToBase64String($bytes))" }
+        elseif ($_ -match '^GRAFANA_ADMIN_PASSWORD=') { "GRAFANA_ADMIN_PASSWORD=$grafanaSecret" }
         elseif ($_ -match '^DEMO_MODE=') { "DEMO_MODE=true" }   # local machine only: enables the demo account
         else { $_ }
     }
