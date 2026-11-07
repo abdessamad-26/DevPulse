@@ -128,6 +128,7 @@ and scans the images for fixable HIGH and CRITICAL vulnerabilities with Trivy.
 - [docs/demo.md](docs/demo.md): local walkthrough of the product's alert-to-incident flow.
 - [docs/integrations.md](docs/integrations.md): Python example for sending project-scoped metrics and logs.
 - [docs/architecture.md](docs/architecture.md): architecture and design notes.
+- [docs/operations-review.md](docs/operations-review.md): operational security, performance and deployment limitations.
 - [CONTRIBUTING.md](CONTRIBUTING.md): contribution guidance.
 
 ## License
