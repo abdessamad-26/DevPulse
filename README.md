@@ -11,7 +11,7 @@ DevPulse is a local-first observability and incident-management application. It 
 - Self-service profile/password changes and global user administration for `ADMIN` users.
 - Docker Compose development stack with PostgreSQL, backend, AI service, and frontend.
 
-The project is under active development. The backend includes project membership, project-scoped ingestion keys, server-side refresh-token rotation/revocation, paged audit-log APIs, and duration-aware alert evaluation. Live infrastructure chaos experiments and production monitoring dashboards are not implemented yet. See [docs/api.md](docs/api.md) for the current API and its limitations.
+The project is under active development. The backend includes project membership, project-scoped ingestion keys, server-side refresh-token rotation/revocation, paged audit-log APIs, and duration-aware alert evaluation. Live infrastructure chaos experiments are not implemented. A starter Grafana dashboard for backend health and service metrics is provisioned for the local Compose stack; it is not a production monitoring deployment. See [docs/api.md](docs/api.md) for the current API and its limitations.
 
 ## Architecture
 
@@ -42,12 +42,14 @@ On macOS or Linux:
 cp .env.example .env
 ```
 
-Edit `.env` and set a strong, unique `DB_PASSWORD` and `JWT_SECRET` (at least 32 characters), then run:
+Edit `.env` and set a strong, unique `DB_PASSWORD` and `JWT_SECRET` (at least 32 characters), and set GRAFANA_ADMIN_PASSWORD to a strong, unique value, then run:
 
 ```sh
-docker compose up -d --build
+docker compose up --build -d --wait --wait-timeout 300
 docker compose ps
 ```
+
+Grafana is available at http://localhost:3001 and Prometheus at http://localhost:9090. Grafana's default username is admin; use the password from your private .env file. The provisioned dashboard is in the DevPulse folder. Both web interfaces are bound to loopback only.
 
 Compose uses the Spring `prod` profile with PostgreSQL and Flyway migrations by default. Override `SPRING_PROFILES_ACTIVE` only when you intentionally want another profile. Health status is visible with `docker compose ps`.
 
@@ -126,6 +128,7 @@ and scans the images for fixable HIGH and CRITICAL vulnerabilities with Trivy.
 - [docs/demo.md](docs/demo.md): local walkthrough of the product's alert-to-incident flow.
 - [docs/integrations.md](docs/integrations.md): Python example for sending project-scoped metrics and logs.
 - [docs/architecture.md](docs/architecture.md): architecture and design notes.
+- [docs/operations-review.md](docs/operations-review.md): operational security, performance and deployment limitations.
 - [CONTRIBUTING.md](CONTRIBUTING.md): contribution guidance.
 
 ## License

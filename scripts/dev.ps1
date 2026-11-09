@@ -11,8 +11,14 @@ if (-not (Test-Path $envFile)) {
     $rng.GetBytes($bytes)
     $rng.Dispose()
     $secret = [Convert]::ToBase64String($bytes)
+    $grafanaBytes = New-Object byte[] 36
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($grafanaBytes)
+    $rng.Dispose()
+    $grafanaSecret = [Convert]::ToBase64String($grafanaBytes)
     $lines = Get-Content $envFile | ForEach-Object {
         if ($_ -match '^JWT_SECRET=') { "JWT_SECRET=$secret" }
+        elseif ($_ -match '^GRAFANA_ADMIN_PASSWORD=') { "GRAFANA_ADMIN_PASSWORD=$grafanaSecret" }
         elseif ($_ -match '^DEMO_MODE=') { "DEMO_MODE=true" }   # local machine only: enables the demo account
         else { $_ }
     }
@@ -22,7 +28,7 @@ if (-not (Test-Path $envFile)) {
 
 Write-Host "Starting DevPulse local environment with Docker Compose..."
 Push-Location $root
-docker compose up -d --build
-Start-Sleep -Seconds 10
+docker compose up --build -d --wait --wait-timeout 300
+Write-Host "All Compose services reported healthy."
 Write-Host "To run backend locally without containers: cd backend; set JWT_SECRET (see .env), then mvn -DskipTests spring-boot:run"
 Pop-Location

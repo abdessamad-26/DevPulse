@@ -10,6 +10,8 @@ if [ ! -f .env ]; then
   SECRET="$(openssl rand -base64 48 | tr -d '\n')"
   # '|' as sed delimiter: base64 can contain '/'
   sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=${SECRET}|" .env
+  GRAFANA_SECRET="$(openssl rand -base64 36 | tr -d '\n')"
+  sed -i.bak "s|^GRAFANA_ADMIN_PASSWORD=.*|GRAFANA_ADMIN_PASSWORD=${GRAFANA_SECRET}|" .env
   sed -i.bak "s|^DEMO_MODE=.*|DEMO_MODE=true|" .env   # local machine only: enables the demo account
   rm -f .env.bak
   echo ".env created with a new random JWT_SECRET (demo mode enabled for local use). It is git-ignored: never commit it."
@@ -17,9 +19,8 @@ fi
 
 echo "Starting DevPulse local environment with Docker Compose..."
 
-docker compose up -d --build
+docker compose up --build -d --wait --wait-timeout 300
 
-echo "Waiting for backend to be healthy (approx 10s)"
-sleep 10
+echo "All Compose services reported healthy."
 
 printf 'To run backend locally without containers:\n  cd backend && export JWT_SECRET=... (see .env) && mvn -DskipTests spring-boot:run\n'

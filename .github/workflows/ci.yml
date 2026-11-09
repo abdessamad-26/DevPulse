@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop, 'modernize/**' ]
+    branches: [ main, develop, 'modernize/**', 'ops/**' ]
   pull_request:
-    branches: [ main, develop, 'modernize/**' ]
+    branches: [ main, develop, 'modernize/**', 'ops/**' ]
   workflow_dispatch:
 
 permissions:
@@ -98,6 +98,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
+      GRAFANA_ADMIN_PASSWORD: e2e-only-grafana-password
       DB_NAME: devpulse_e2e
       DB_USERNAME: devpulse
       DB_PASSWORD: e2e-only-password

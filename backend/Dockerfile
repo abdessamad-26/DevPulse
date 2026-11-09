@@ -9,7 +9,10 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests package
 
 FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
+# Refresh and upgrade the Noble base packages before installing runtime tools.
+# This keeps security fixes (including apt/libapt) in the final runtime image.
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 10001 app \
